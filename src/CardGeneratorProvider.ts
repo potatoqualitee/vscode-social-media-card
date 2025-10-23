@@ -14,7 +14,7 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
     private currentDimensions: { width: number; height: number } = { width: 1200, height: 630 };
     private currentSourceFile?: string; // Track which file the designs were generated from
     private currentCancellation?: vscode.CancellationTokenSource; // Track current generation cancellation
-    private cachedSummary?: { title: string; summary: string; modelName: string; sourceFile: string }; // Cached summary for the current file
+    private cachedSummary?: { title: string; summary: string; modelName: string; sourceFile: string; suggestedFilename?: string }; // Cached summary for the current file
 
     constructor(private readonly _extensionUri: vscode.Uri, private readonly context: vscode.ExtensionContext) {
         this.cardGenerator = new CardGenerator();
@@ -217,6 +217,9 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 case 'screenshot':
                     await this.handleScreenshot(data.imageData, data.dimensions);
                     break;
+                case 'export-png':
+                    await this.handleExportPng(data.imageData, data.dimensions, data.designTitle, data.designIndex);
+                    break;
                 case 'chat':
                     await this.handleChat(data.message);
                     break;
@@ -373,7 +376,8 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                     title,
                     summary,
                     modelName,
-                    sourceFile: currentFile
+                    sourceFile: currentFile,
+                    suggestedFilename: summaryResult.suggestedFilename
                 };
             }
 
@@ -489,11 +493,14 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
             // Save to temp directory with dimensions in filename
             const tempFilePath = await this.screenshotService.saveToTemp(imageData, dimensions);
 
-            // Create a new webview panel
+            // Get the active text editor's column, or default to Active
+            const activeColumn = vscode.window.activeTextEditor?.viewColumn || vscode.ViewColumn.Active;
+
+            // Create a new webview panel in the active column
             const panel = vscode.window.createWebviewPanel(
                 'cardPreview',
                 'Card Preview',
-                vscode.ViewColumn.Active,
+                activeColumn,
                 {
                     enableScripts: true,
                     retainContextWhenHidden: false
@@ -737,6 +744,42 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 this.currentCancellation.dispose();
                 this.currentCancellation = undefined;
             }
+        }
+    }
+
+    private async handleExportPng(imageData: string, dimensions: { width: number; height: number }, designTitle?: string, designIndex?: number) {
+        try {
+            // Get the suggested filename from cached summary
+            const suggestedFilename = this.cachedSummary?.suggestedFilename;
+
+            // Export the PNG with suggested filename
+            const result = await this.screenshotService.exportPng(
+                imageData,
+                dimensions,
+                suggestedFilename,
+                designIndex
+            );
+
+            // Send result back to webview
+            this._view?.webview.postMessage({
+                type: 'export-complete',
+                success: result.success,
+                message: result.message,
+                filePath: result.filePath
+            });
+
+            // Only show error notifications to user (success is silent)
+            if (!result.success && result.message && result.message !== 'Export cancelled') {
+                vscode.window.showErrorMessage(result.message);
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this._view?.webview.postMessage({
+                type: 'export-complete',
+                success: false,
+                message: `Export failed: ${errorMessage}`
+            });
+            vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
         }
     }
 

@@ -78,6 +78,22 @@
             "Show detailed debug information about the generation process"
           ],
           "description": "Choose the type of loading animation to display during card generation"
+        },
+        "socialCardGenerator.exportSaveMode": {
+          "type": "string",
+          "enum": ["prompt", "relative", "absolute"],
+          "default": "prompt",
+          "enumDescriptions": [
+            "Always show save dialog to choose location",
+            "Save to 'social-cards' folder in workspace root",
+            "Save to a specific absolute path (configured separately)"
+          ],
+          "description": "Choose how exported PNG files are saved"
+        },
+        "socialCardGenerator.exportAbsolutePath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path for saving exported PNGs (only used when exportSaveMode is 'absolute')"
         }
       }
     }

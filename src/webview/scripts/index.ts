@@ -305,14 +305,14 @@ export function getMainScript(): string {
                             <span class="design-name">\${escapeHtml(design.title)}</span>
                         </div>
                         <div class="design-header-actions">
-                            <button class="export-btn" onclick="exportDesign(\${index})" title="Export this design as a PNG image">
+                            <button class="export-btn" title="Export this design as a PNG image">
                                 <span class="codicon codicon-desktop-download"></span>
                                 Export as PNG
                             </button>
                         </div>
                     </div>
                     <div class="design-card-body">
-                        <div class="design-preview" style="width: \${scaledWidth}px; height: \${scaledHeight}px;" onclick="openPreview(\${index})" title="Click to open in new tab">
+                        <div class="design-preview preview-clickable" data-index="\${index}" style="width: \${scaledWidth}px; height: \${scaledHeight}px; cursor: pointer;" title="Click to open larger preview">
                             <div class="preview-wrapper" style="transform: scale(\${scale}); width: \${width}px; height: \${height}px;">
                                 <iframe
                                     id="preview-\${index}"
@@ -320,6 +320,7 @@ export function getMainScript(): string {
                                     height="\${height}"
                                     scrolling="no"
                                     sandbox="allow-same-origin allow-scripts"
+                                    style="pointer-events: none;"
                                 ></iframe>
                             </div>
                         </div>
@@ -342,17 +343,54 @@ export function getMainScript(): string {
                 if (iframe) {
                     iframe.srcdoc = design.html;
                 }
+
+                // Add click handler to the preview container (not iframe, since iframe clicks don't bubble)
+                const previewContainer = card.querySelector('.preview-clickable');
+                if (previewContainer) {
+                    previewContainer.addEventListener('click', async () => {
+                        // Convert the design to an image and open in a new tab
+                        const imageData = await convertToImage(index);
+                        if (imageData) {
+                            const width = parseInt(document.getElementById('width').value);
+                            const height = parseInt(document.getElementById('height').value);
+                            vscode.postMessage({
+                                type: 'open-preview',
+                                imageData: imageData,
+                                dimensions: { width, height }
+                            });
+                        }
+                    });
+                }
             });
 
             updateClearButtonState();
         }
 
-        async function convertToImage(index) {
-            const htmlTextarea = document.getElementById(\`html-\${index}\`);
-            const html = htmlTextarea ? htmlTextarea.value : '';
 
-            if (!html) {
-                showStatus('No HTML to convert', 'error');
+        function toggleCode(index) {
+            const codeDiv = document.getElementById(\`code-\${index}\`);
+            const toggleBtn = event.target.closest('.toggle-code-btn');
+
+            if (codeDiv) {
+                const isExpanded = codeDiv.classList.toggle('visible');
+                if (toggleBtn) {
+                    if (isExpanded) {
+                        toggleBtn.classList.add('expanded');
+                        toggleBtn.setAttribute('title', 'Hide the HTML source code');
+                    } else {
+                        toggleBtn.classList.remove('expanded');
+                        toggleBtn.setAttribute('title', 'View or edit the HTML source code');
+                    }
+                }
+            }
+        }
+
+        // ===== EXPORT FUNCTIONS =====
+        async function convertToImage(index) {
+            const iframe = document.getElementById(\`preview-\${index}\`);
+
+            if (!iframe || !iframe.contentDocument) {
+                showStatus('Preview not found', 'error');
                 return null;
             }
 
@@ -360,29 +398,26 @@ export function getMainScript(): string {
             const height = parseInt(document.getElementById('height').value);
 
             try {
-                const container = document.createElement('div');
-                container.style.position = 'absolute';
-                container.style.left = '-9999px';
-                container.style.top = '-9999px';
-                container.style.width = width + 'px';
-                container.style.height = height + 'px';
-                container.innerHTML = html;
-                document.body.appendChild(container);
+                // Capture the iframe's body directly - no DOM manipulation needed!
+                const iframeBody = iframe.contentDocument.body;
 
-                await new Promise(resolve => setTimeout(resolve, 500));
+                if (!iframeBody) {
+                    showStatus('Preview content not loaded', 'error');
+                    return null;
+                }
 
-                const canvas = await html2canvas(container, {
+                const canvas = await html2canvas(iframeBody, {
                     width: width,
                     height: height,
                     scale: 2,
                     useCORS: true,
                     allowTaint: true,
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    windowWidth: width,
+                    windowHeight: height
                 });
 
                 const imageData = canvas.toDataURL('image/png');
-                document.body.removeChild(container);
-
                 return imageData;
             } catch (error) {
                 showStatus('Conversion failed: ' + error.message, 'error');
@@ -403,61 +438,38 @@ export function getMainScript(): string {
                 const width = parseInt(document.getElementById('width').value);
                 const height = parseInt(document.getElementById('height').value);
 
+                // Get the design title for filename suggestion
+                const designCard = document.querySelectorAll('.design-card')[index];
+                const titleElement = designCard?.querySelector('.design-name');
+                const designTitle = titleElement?.textContent || \`Design \${index + 1}\`;
+
                 vscode.postMessage({
-                    type: 'screenshot',
+                    type: 'export-png',
                     imageData: imageData,
-                    dimensions: { width, height }
+                    dimensions: { width, height },
+                    designIndex: index,
+                    designTitle: designTitle
                 });
 
-                showStatus('Converting...', 'info');
+                showStatus('Exporting...', 'info');
             } catch (error) {
                 showStatus('Export failed: ' + error.message, 'error');
                 console.error('Export error:', error);
             }
         }
 
-        async function openPreview(index) {
-            try {
-                showStatus('Opening preview...', 'info');
-
-                const imageData = await convertToImage(index);
-                if (!imageData) {
-                    return;
-                }
-
-                const width = parseInt(document.getElementById('width').value);
-                const height = parseInt(document.getElementById('height').value);
-
-                vscode.postMessage({
-                    type: 'open-preview',
-                    imageData: imageData,
-                    dimensions: { width, height }
-                });
-
-                clearStatus();
-            } catch (error) {
-                showStatus('Failed to open preview: ' + error.message, 'error');
-                console.error('Open preview error:', error);
-            }
-        }
-
-        function toggleCode(index) {
-            const codeDiv = document.getElementById(\`code-\${index}\`);
-            const toggleBtn = event.target.closest('.toggle-code-btn');
-
-            if (codeDiv) {
-                const isExpanded = codeDiv.classList.toggle('visible');
-                if (toggleBtn) {
-                    if (isExpanded) {
-                        toggleBtn.classList.add('expanded');
-                        toggleBtn.setAttribute('title', 'Hide the HTML source code');
-                    } else {
-                        toggleBtn.classList.remove('expanded');
-                        toggleBtn.setAttribute('title', 'View or edit the HTML source code');
-                    }
+        // Event delegation for export buttons
+        document.getElementById('preview-area').addEventListener('click', function(e) {
+            const exportBtn = e.target.closest('.export-btn');
+            if (exportBtn) {
+                const designCard = exportBtn.closest('.design-card');
+                const allCards = Array.from(document.querySelectorAll('.design-card'));
+                const index = allCards.indexOf(designCard);
+                if (index !== -1) {
+                    exportDesign(index);
                 }
             }
-        }
+        });
 
         // Handle window resize
         let resizeTimeout;
@@ -953,6 +965,18 @@ export function getMainScript(): string {
                     break;
                 case 'screenshot-complete':
                     clearStatus();
+                    break;
+                case 'export-complete':
+                    if (message.success) {
+                        // Success is silent - just clear the "Converting..." message
+                        clearStatus();
+                    } else if (message.message && message.message !== 'Export cancelled') {
+                        // Only show actual errors (not cancellation)
+                        showStatus(message.message, 'error');
+                    } else {
+                        // Cancelled - silent
+                        clearStatus();
+                    }
                     break;
                 case 'current-settings':
                     document.getElementById('num-designs').value = message.settings.numberOfDesigns;

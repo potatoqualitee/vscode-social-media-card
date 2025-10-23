@@ -17,6 +17,7 @@ export interface BlogSummary {
     title: string;
     summary: string;
     modelName: string;
+    suggestedFilename?: string;
 }
 
 export class CardGenerator {
@@ -430,6 +431,7 @@ ${technicalRequirements}`;
         const prompt = `Analyze this blog post and extract:
 1. A clear, compelling title (5-10 words max)
 2. A concise summary that captures the main points (2-3 sentences)
+3. A suggested filename for exported images (lowercase, hyphenated, no file extension, max 50 chars)
 
 Blog post content:
 ${blogContent}
@@ -437,7 +439,8 @@ ${blogContent}
 Return ONLY valid JSON in this exact format:
 {
   "title": "The extracted or refined title",
-  "summary": "A 2-3 sentence summary of the key points"
+  "summary": "A 2-3 sentence summary of the key points",
+  "suggestedFilename": "descriptive-filename-without-extension"
 }`;
 
         console.log('=== SUMMARIZATION PROMPT ===');
@@ -505,10 +508,20 @@ Return ONLY valid JSON in this exact format:
             // Add the model name to the summary
             summary.modelName = modelName;
 
+            // If no suggested filename, generate one from the title
+            if (!summary.suggestedFilename) {
+                summary.suggestedFilename = summary.title
+                    .toLowerCase()
+                    .replace(/[^a-z0-9\s-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .substring(0, 50);
+            }
+
             console.log('=== PARSED SUMMARY ===');
             console.log('Title:', summary.title);
             console.log('Summary:', summary.summary);
             console.log('Model:', summary.modelName);
+            console.log('Suggested Filename:', summary.suggestedFilename);
             console.log('=== END PARSED SUMMARY ===');
 
             return summary;
