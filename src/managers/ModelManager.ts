@@ -101,10 +101,10 @@ export class ModelManager {
                 vendor: 'cli',
                 family: 'codex',
                 version: '',
-                name: 'Codex (codex)',
+                name: 'Codex (codex exec)',
                 maxInputTokens: 100000,
                 isCli: true,
-                cliCommand: 'codex'
+                cliCommand: 'codex exec'
             },
             {
                 id: 'cli:gemini',
