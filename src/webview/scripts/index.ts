@@ -337,21 +337,12 @@ export function getMainScript(): string {
                 \`;
 
                 previewArea.appendChild(card);
-            });
 
-            // Render all iframes after DOM is settled
-            // Use document.write instead of srcdoc for more reliable rendering in VS Code webviews
-            setTimeout(() => {
-                designs.forEach((design, index) => {
-                    const iframe = document.getElementById(\`preview-\${index}\`);
-                    if (iframe && iframe.contentWindow) {
-                        const doc = iframe.contentWindow.document;
-                        doc.open();
-                        doc.write(design.html);
-                        doc.close();
-                    }
-                });
-            }, 0);
+                const iframe = document.getElementById(\`preview-\${index}\`);
+                if (iframe) {
+                    iframe.srcdoc = design.html;
+                }
+            });
 
             updateClearButtonState();
         }
