@@ -1,0 +1,102 @@
+{
+  "name": "social-card-generator",
+  "displayName": "Social Media Card Generator",
+  "description": "Generate social media cards for blog posts using AI",
+  "version": "0.0.1",
+  "publisher": "your-publisher-name",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "enabledApiProposals": [
+    "languageModels"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "socialCardContainer",
+          "title": "Social Cards",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "socialCardContainer": [
+        {
+          "type": "webview",
+          "id": "socialCardView",
+          "name": "Card Generator"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Social Card Generator",
+      "properties": {
+        "socialCardGenerator.numberOfDesigns": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Number of design variations to generate (1-10)"
+        },
+        "socialCardGenerator.useSeparateRequestsForPremiumModels": {
+          "type": "boolean",
+          "default": false,
+          "description": "When using premium models (non-OpenAI), generate designs with separate API calls for better quality. Note: This will use more API credits. OpenAI models always use separate requests as they are free."
+        },
+        "socialCardGenerator.promptMode": {
+          "type": "string",
+          "enum": ["default", "append", "custom"],
+          "default": "default",
+          "enumDescriptions": [
+            "Use the default design prompt",
+            "Append your custom instructions to the default prompt",
+            "Use a completely custom prompt (with template variables)"
+          ],
+          "description": "Choose how to customize the AI design prompt"
+        },
+        "socialCardGenerator.customPromptInstructions": {
+          "type": "string",
+          "default": "",
+          "editPresentation": "multilineText",
+          "markdownDescription": "Your custom prompt instructions. **Append mode**: Add extra direction to the default prompt. **Custom mode**: Write your own prompt using template variables: `{{title}}`, `{{summary}}`, `{{width}}`, `{{height}}`, `{{designNumber}}`, `{{numberOfDesigns}}`. Technical requirements (JSON format, HTML/CSS) will be automatically included."
+        },
+        "socialCardGenerator.loadingAnimation": {
+          "type": "string",
+          "enum": ["spinner", "progress", "debug"],
+          "default": "spinner",
+          "enumDescriptions": [
+            "Show a simple spinning animation",
+            "Show a progress bar with percentage",
+            "Show detailed debug information about the generation process"
+          ],
+          "description": "Choose the type of loading animation to display during card generation"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "@types/node": "^20.x",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {}
+}
