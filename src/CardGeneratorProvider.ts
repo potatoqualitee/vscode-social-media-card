@@ -15,6 +15,7 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
     private currentSourceFile?: string; // Track which file the designs were generated from
     private currentCancellation?: vscode.CancellationTokenSource; // Track current generation cancellation
     private cachedSummary?: { title: string; summary: string; modelName: string; sourceFile: string; suggestedFilename?: string }; // Cached summary for the current file
+    private cachedBlogContent?: string; // Cached blog content to support regeneration when no active editor
 
     constructor(private readonly _extensionUri: vscode.Uri, private readonly context: vscode.ExtensionContext) {
         this.cardGenerator = new CardGenerator();
@@ -287,12 +288,13 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
         // This allows the button to stay as "Regenerate" even when preview panel is open
         const shouldEnable = hasValidEditor || hasDesigns;
 
-        // Only clear cached summary if we're actually switching to a DIFFERENT file
+        // Only clear cached summary and content if we're actually switching to a DIFFERENT file
         // (not just losing focus because a preview panel opened)
         if (this.cachedSummary &&
             currentFile &&
             this.cachedSummary.sourceFile !== currentFile) {
             this.cachedSummary = undefined;
+            this.cachedBlogContent = undefined;
         }
 
         this._view?.webview.postMessage({
@@ -308,9 +310,32 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
         const cancellationToken = this.currentCancellation.token;
 
         try {
-            // Get active editor content
+            // Get active editor content, or use cached content if regenerating from Card Preview
             const editor = vscode.window.activeTextEditor;
-            if (!editor) {
+            let blogContent: string;
+            let currentFile: string;
+
+            if (editor) {
+                // Use active editor
+                blogContent = editor.document.getText();
+                currentFile = editor.document.uri.toString();
+
+                if (!blogContent || blogContent.trim().length === 0) {
+                    vscode.window.showErrorMessage('The active file is empty.');
+                    this._view?.webview.postMessage({
+                        type: 'generation-complete',
+                        success: false
+                    });
+                    return;
+                }
+
+                // Cache the content for future regenerations
+                this.cachedBlogContent = blogContent;
+            } else if (this.cachedBlogContent && this.currentSourceFile) {
+                // No active editor, but we have cached content (e.g., regenerating from Card Preview tab)
+                blogContent = this.cachedBlogContent;
+                currentFile = this.currentSourceFile;
+            } else {
                 vscode.window.showErrorMessage('Please open a blog post file first.');
                 this._view?.webview.postMessage({
                     type: 'generation-complete',
@@ -318,18 +343,6 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 });
                 return;
             }
-
-            const blogContent = editor.document.getText();
-            if (!blogContent || blogContent.trim().length === 0) {
-                vscode.window.showErrorMessage('The active file is empty.');
-                this._view?.webview.postMessage({
-                    type: 'generation-complete',
-                    success: false
-                });
-                return;
-            }
-
-            const currentFile = editor.document.uri.toString();
 
             // Check if we have a cached summary for this file
             let title: string;
@@ -433,7 +446,7 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
             // Store designs, dimensions, and source file for future modifications
             this.currentDesigns = designs;
             this.currentDimensions = dimensions;
-            this.currentSourceFile = editor.document.uri.toString();
+            this.currentSourceFile = currentFile;
 
             // Send final designs to webview (in case callback wasn't used for batched mode)
             this._view?.webview.postMessage({
