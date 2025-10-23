@@ -7,6 +7,8 @@ export interface ModelInfo {
     version: string;
     name: string;
     maxInputTokens: number;
+    isCli?: boolean; // True if this is a CLI provider
+    cliCommand?: string; // The CLI command to execute (e.g., 'claude', 'codex', 'gemini')
 }
 
 export class ModelManager {
@@ -35,15 +37,88 @@ export class ModelManager {
         return this.selectedModel;
     }
 
+    public getSelectedModelInfo(): ModelInfo | undefined {
+        if (!this.selectedModelId) {
+            return undefined;
+        }
+
+        // Check if it's a CLI provider
+        if (this.selectedModelId.startsWith('cli:')) {
+            const allModels = this.getAvailableModels();
+            return allModels.find(m => m.id === this.selectedModelId);
+        }
+
+        // It's a VSCode LM model
+        if (this.selectedModel) {
+            return {
+                id: this.selectedModel.id,
+                vendor: this.selectedModel.vendor,
+                family: this.selectedModel.family,
+                version: this.selectedModel.version,
+                name: this.getModelDisplayName(this.selectedModel),
+                maxInputTokens: this.selectedModel.maxInputTokens,
+                isCli: false
+            };
+        }
+
+        return undefined;
+    }
+
     public getAvailableModels(): ModelInfo[] {
-        return this.availableModels.map(model => ({
+        const vscodeModels = this.availableModels.map(model => ({
             id: model.id,
             vendor: model.vendor,
             family: model.family,
             version: model.version,
             name: this.getModelDisplayName(model),
-            maxInputTokens: model.maxInputTokens
+            maxInputTokens: model.maxInputTokens,
+            isCli: false
         }));
+
+        // Add CLI providers at the end with a separator
+        const cliModels: ModelInfo[] = [
+            {
+                id: '---separator---',
+                vendor: 'separator',
+                family: 'separator',
+                version: '',
+                name: '────────────────────',
+                maxInputTokens: 0,
+                isCli: false
+            },
+            {
+                id: 'cli:claude',
+                vendor: 'cli',
+                family: 'claude',
+                version: '',
+                name: 'Claude (claude)',
+                maxInputTokens: 200000,
+                isCli: true,
+                cliCommand: 'claude'
+            },
+            {
+                id: 'cli:codex',
+                vendor: 'cli',
+                family: 'codex',
+                version: '',
+                name: 'Codex (codex)',
+                maxInputTokens: 100000,
+                isCli: true,
+                cliCommand: 'codex'
+            },
+            {
+                id: 'cli:gemini',
+                vendor: 'cli',
+                family: 'gemini',
+                version: '',
+                name: 'Gemini (gemini)',
+                maxInputTokens: 1000000,
+                isCli: true,
+                cliCommand: 'gemini'
+            }
+        ];
+
+        return [...vscodeModels, ...cliModels];
     }
 
     public isLoading(): boolean {
@@ -55,6 +130,32 @@ export class ModelManager {
     }
 
     public selectModel(modelId: string, onClearHistory?: () => void, onModelSelected?: (modelId: string) => void) {
+        // Don't allow selecting the separator
+        if (modelId === '---separator---') {
+            return;
+        }
+
+        // Check if it's a CLI provider
+        if (modelId.startsWith('cli:')) {
+            // For CLI providers, we don't have a vscode.LanguageModelChat object
+            this.selectedModel = undefined;
+            this.selectedModelId = modelId;
+
+            // Persist the selected model ID
+            this.context.globalState.update('selectedModelId', modelId);
+
+            // Clear conversation history when switching models
+            if (onClearHistory) {
+                onClearHistory();
+            }
+
+            if (onModelSelected) {
+                onModelSelected(modelId);
+            }
+            return;
+        }
+
+        // Handle VSCode LM models
         const model = this.availableModels.find(m => m.id === modelId);
         if (model) {
             this.selectedModel = model;

@@ -414,7 +414,8 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 designCallback,
                 debugCallback,
                 cancellationToken,
-                chatMessage // pass chat message for append mode
+                chatMessage, // pass chat message for append mode
+                this.modelManager.getSelectedModelInfo() // pass model info for CLI providers
             );
 
             // Store designs, dimensions, and source file for future modifications
@@ -687,7 +688,8 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 this.currentDimensions,
                 this.modelManager.getSelectedModel(),
                 cancellationToken,
-                debugCallback
+                debugCallback,
+                this.modelManager.getSelectedModelInfo() // pass model info for CLI providers
             );
 
             // Update stored designs

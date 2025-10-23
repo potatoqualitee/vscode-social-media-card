@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { CliProviderService } from './services/CliProviderService';
+import { ModelInfo } from './managers/ModelManager';
 
 export interface CardDesign {
     title: string;
@@ -18,6 +20,50 @@ export interface BlogSummary {
 }
 
 export class CardGenerator {
+    /**
+     * Send a request to either a VSCode LM model or a CLI provider
+     */
+    private async sendModelRequest(
+        prompt: string,
+        model?: vscode.LanguageModelChat,
+        modelInfo?: ModelInfo,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<string> {
+        // If modelInfo indicates it's a CLI provider, use CLI execution
+        if (modelInfo?.isCli && modelInfo.cliCommand) {
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+            console.log(`Using CLI provider: ${modelInfo.cliCommand}`);
+
+            const response = await CliProviderService.executeCliProvider(
+                modelInfo.cliCommand,
+                prompt,
+                workspaceFolder,
+                cancellationToken
+            );
+
+            return response.text;
+        }
+
+        // Otherwise, use VSCode LM API
+        if (!model) {
+            throw new Error('No model or CLI provider specified');
+        }
+
+        const messages = [vscode.LanguageModelChatMessage.User(prompt)];
+        const response = await model.sendRequest(
+            messages,
+            {},
+            cancellationToken || new vscode.CancellationTokenSource().token
+        );
+
+        let text = '';
+        for await (const fragment of response.text) {
+            text += fragment;
+        }
+
+        return text;
+    }
+
     /**
      * Retry wrapper for API calls with exponential backoff
      * Retries up to maxAttempts times on any error except CancellationError
@@ -493,19 +539,20 @@ Return ONLY valid JSON in this exact format:
         summary: string,
         dimensions: { width: number; height: number },
         numberOfDesigns: number,
-        model: vscode.LanguageModelChat,
+        model: vscode.LanguageModelChat | undefined,
         progressCallback?: (current: number, total: number) => void,
         designCallback?: (design: CardDesign) => void,
         debugCallback?: (message: string) => void,
         cancellationToken?: vscode.CancellationToken,
-        chatMessage?: string
+        chatMessage?: string,
+        modelInfo?: ModelInfo
     ): Promise<CardDesign[]> {
         const designs: CardDesign[] = [];
 
         console.log(`Generating ${numberOfDesigns} designs separately for better quality`);
 
         if (debugCallback) {
-            const modelName = model.name || model.id || model.family || 'Unknown model';
+            const modelName = modelInfo?.name || model?.name || model?.id || model?.family || 'Unknown model';
             debugCallback(`\n=== Step 2: Design Generation (Separate Requests) ===\nModel: ${modelName}\nGenerating ${numberOfDesigns} designs with separate API calls\n`);
         }
 
@@ -543,26 +590,17 @@ Return ONLY valid JSON in this exact format:
             try {
                 // Wrap the API call in retry logic
                 const fullResponse = await this.retryApiCall(async () => {
-                    const response = await model.sendRequest(
-                        messages,
-                        {},
-                        cancellationToken || new vscode.CancellationTokenSource().token
-                    );
+                    const text = await this.sendModelRequest(prompt, model, modelInfo, cancellationToken);
 
-                    let text = '';
-                    let streamedToDebug = false;
-                    for await (const fragment of response.text) {
-                        text += fragment;
-                        // Only stream the first part to debug console (stop after we see opening brace)
-                        if (!streamedToDebug && debugCallback) {
-                            debugCallback(fragment);
-                            // Stop streaming to debug once we hit the JSON response
-                            if (text.includes('{')) {
-                                debugCallback('... [JSON response received, rendering design]\n');
-                                streamedToDebug = true;
-                            }
+                    // Stream to debug if available (for CLI, this happens after completion)
+                    if (debugCallback) {
+                        const previewText = text.substring(0, Math.min(100, text.length));
+                        debugCallback(previewText);
+                        if (text.includes('{')) {
+                            debugCallback('... [JSON response received, rendering design]\n');
                         }
                     }
+
                     return text;
                 }, 3, cancellationToken);
 
@@ -647,7 +685,8 @@ Return ONLY valid JSON in this exact format:
         designCallback?: (design: CardDesign) => void,
         debugCallback?: (message: string) => void,
         cancellationToken?: vscode.CancellationToken,
-        chatMessage?: string
+        chatMessage?: string,
+        modelInfo?: ModelInfo
     ): Promise<CardDesign[]> {
         // Get configured number of designs if not provided
         if (!numberOfDesigns) {
@@ -656,10 +695,11 @@ Return ONLY valid JSON in this exact format:
         }
 
         // Use provided model or fallback to selecting Copilot model
-        let model: vscode.LanguageModelChat;
+        let model: vscode.LanguageModelChat | undefined;
         if (selectedModel) {
             model = selectedModel;
-        } else {
+        } else if (!modelInfo?.isCli) {
+            // Only fetch a model if we're not using CLI
             const models = await vscode.lm.selectChatModels({
                 vendor: 'copilot',
                 family: 'gpt-4o'
@@ -677,10 +717,12 @@ Return ONLY valid JSON in this exact format:
         const useSeparateForPremium = config.get<boolean>('useSeparateRequestsForPremiumModels', false);
 
         // Check if model is from OpenAI (always use separate requests) or if user opted in for premium
-        const isOpenAI = model.vendor === 'copilot'; // GitHub Copilot uses OpenAI models which are free
-        const shouldUseSeparateRequests = isOpenAI || useSeparateForPremium;
+        // For CLI providers, always use separate requests
+        const isOpenAI = model?.vendor === 'copilot'; // GitHub Copilot uses OpenAI models which are free
+        const isCli = modelInfo?.isCli === true;
+        const shouldUseSeparateRequests = isOpenAI || useSeparateForPremium || isCli;
 
-        console.log(`Model vendor: ${model.vendor}, Using separate requests: ${shouldUseSeparateRequests}`);
+        console.log(`Model vendor: ${model?.vendor || 'CLI'}, Using separate requests: ${shouldUseSeparateRequests}`);
 
         if (shouldUseSeparateRequests && numberOfDesigns > 1) {
             // Generate designs separately for better quality
@@ -694,7 +736,8 @@ Return ONLY valid JSON in this exact format:
                 designCallback,
                 debugCallback,
                 cancellationToken,
-                chatMessage
+                chatMessage,
+                modelInfo
             );
         }
 
@@ -709,7 +752,7 @@ Return ONLY valid JSON in this exact format:
 
         // Send prompt immediately (before API call)
         if (debugCallback) {
-            const modelName = model.name || model.id || model.family || 'Unknown model';
+            const modelName = modelInfo?.name || model?.name || model?.id || model?.family || 'Unknown model';
             debugCallback(`\n=== Step 2: Design Generation (Batch Mode) ===\nModel: ${modelName}\nGenerating ${numberOfDesigns} designs in one request\n`);
             debugCallback(`\n--- Prompt ---\n${prompt}\n`);
 
@@ -727,26 +770,17 @@ Return ONLY valid JSON in this exact format:
         try {
             // Wrap the API call in retry logic
             const fullResponse = await this.retryApiCall(async () => {
-                const response = await model.sendRequest(
-                    messages,
-                    {},
-                    cancellationToken || new vscode.CancellationTokenSource().token
-                );
+                const text = await this.sendModelRequest(prompt, model, modelInfo, cancellationToken);
 
-                let text = '';
-                let streamedToDebug = false;
-                for await (const fragment of response.text) {
-                    text += fragment;
-                    // Only stream the first part to debug console (stop after we see opening brace)
-                    if (!streamedToDebug && debugCallback) {
-                        debugCallback(fragment);
-                        // Stop streaming to debug once we hit the JSON response
-                        if (text.includes('{')) {
-                            debugCallback('... [JSON response received, rendering designs]\n');
-                            streamedToDebug = true;
-                        }
+                // Stream to debug if available (for CLI, this happens after completion)
+                if (debugCallback) {
+                    const previewText = text.substring(0, Math.min(100, text.length));
+                    debugCallback(previewText);
+                    if (text.includes('{')) {
+                        debugCallback('... [JSON response received, rendering designs]\n');
                     }
                 }
+
                 return text;
             }, 3, cancellationToken);
 
@@ -820,13 +854,15 @@ Return ONLY valid JSON in this exact format:
         dimensions: { width: number; height: number },
         selectedModel?: vscode.LanguageModelChat,
         cancellationToken?: vscode.CancellationToken,
-        debugCallback?: (message: string) => void
+        debugCallback?: (message: string) => void,
+        modelInfo?: ModelInfo
     ): Promise<CardDesign[]> {
         // Use provided model or fallback to selecting Copilot model
-        let model: vscode.LanguageModelChat;
+        let model: vscode.LanguageModelChat | undefined;
         if (selectedModel) {
             model = selectedModel;
-        } else {
+        } else if (!modelInfo?.isCli) {
+            // Only fetch a model if we're not using CLI
             const models = await vscode.lm.selectChatModels({
                 vendor: 'copilot',
                 family: 'gpt-4o'
@@ -929,7 +965,7 @@ The HTML should be self-contained with all CSS inline or in <style> tags. Use th
 
         // Send prompt immediately (before API call)
         if (debugCallback) {
-            const modelName = model.name || model.id || model.family || 'Unknown model';
+            const modelName = modelInfo?.name || model?.name || model?.id || model?.family || 'Unknown model';
             debugCallback(`\n=== Design Modification ===\nModel: ${modelName}\n`);
             debugCallback(`\n=== USER REDESIGN REQUEST ===\n${modificationRequest}\n`);
             debugCallback(`\n--- Prompt ---\n${prompt}\n`);
@@ -944,26 +980,17 @@ The HTML should be self-contained with all CSS inline or in <style> tags. Use th
         try {
             // Wrap the API call in retry logic
             const fullResponse = await this.retryApiCall(async () => {
-                const response = await model.sendRequest(
-                    messages,
-                    {},
-                    cancellationToken || new vscode.CancellationTokenSource().token
-                );
+                const text = await this.sendModelRequest(prompt, model, modelInfo, cancellationToken);
 
-                let text = '';
-                let streamedToDebug = false;
-                for await (const fragment of response.text) {
-                    text += fragment;
-                    // Only stream the first part to debug console (stop after we see opening brace)
-                    if (!streamedToDebug && debugCallback) {
-                        debugCallback(fragment);
-                        // Stop streaming to debug once we hit the JSON response
-                        if (text.includes('{')) {
-                            debugCallback('... [JSON response received, rendering designs]\n');
-                            streamedToDebug = true;
-                        }
+                // Stream to debug if available (for CLI, this happens after completion)
+                if (debugCallback) {
+                    const previewText = text.substring(0, Math.min(100, text.length));
+                    debugCallback(previewText);
+                    if (text.includes('{')) {
+                        debugCallback('... [JSON response received, rendering designs]\n');
                     }
                 }
+
                 return text;
             }, 3, cancellationToken);
 

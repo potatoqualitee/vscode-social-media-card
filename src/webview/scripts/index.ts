@@ -792,6 +792,10 @@ export function getMainScript(): string {
                 if (model.id === selectedModelId) {
                     option.selected = true;
                 }
+                // Disable separator option
+                if (model.id === '---separator---') {
+                    option.disabled = true;
+                }
                 agentSelect.appendChild(option);
             });
 
