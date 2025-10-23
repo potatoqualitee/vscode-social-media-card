@@ -22,7 +22,6 @@ export function getMainScript(): string {
         let availableModels = [];
         let currentStreamingMessage = null;
         let isGenerating = false;
-        let designHtmlCache = []; // Cache of design HTML for refresh functionality
 
         // ===== UTILITY FUNCTIONS =====
         function escapeHtml(text) {
@@ -63,109 +62,6 @@ export function getMainScript(): string {
                 clearChatBtn.disabled = !hasChatMessages && !hasDesigns;
             }
         }
-
-        // ===== WHITE SCREEN DETECTION & RETRY =====
-        async function isIframeWhiteOrBlank(iframe) {
-            try {
-                // Wait a bit for initial render
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                if (!iframeDoc || !iframeDoc.body) {
-                    return true; // No document means blank
-                }
-
-                // Check if body has no content
-                const bodyText = iframeDoc.body.innerText.trim();
-                const hasChildren = iframeDoc.body.children.length > 0;
-
-                if (!hasChildren && !bodyText) {
-                    return true; // Empty body
-                }
-
-                // Try to detect if it's all white by checking computed styles
-                const bodyStyle = iframe.contentWindow.getComputedStyle(iframeDoc.body);
-                const bgColor = bodyStyle.backgroundColor;
-                const hasContent = iframeDoc.body.querySelector('*:not(script):not(style)');
-
-                // If body is white/transparent and has no visible content
-                if (!hasContent && (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'rgb(255, 255, 255)')) {
-                    return true;
-                }
-
-                return false;
-            } catch (error) {
-                console.warn('Error checking iframe content:', error);
-                return false; // Assume it's okay if we can't check
-            }
-        }
-
-        async function renderIframeWithRetry(iframe, html, maxAttempts = 3) {
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-                iframe.srcdoc = html;
-
-                // Wait for iframe to load
-                await new Promise((resolve) => {
-                    if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-                        resolve();
-                    } else {
-                        iframe.onload = resolve;
-                        // Fallback timeout in case onload never fires
-                        setTimeout(resolve, 1000);
-                    }
-                });
-
-                // Check if it rendered correctly
-                const isBlank = await isIframeWhiteOrBlank(iframe);
-
-                if (!isBlank) {
-                    return true; // Success!
-                }
-
-                if (attempt < maxAttempts) {
-                    console.log(\`Iframe render attempt \${attempt} was blank, retrying...\`);
-                    // Wait a bit before retry with exponential backoff
-                    await new Promise(resolve => setTimeout(resolve, 200 * attempt));
-                }
-            }
-
-            console.warn('Iframe still appears blank after all retry attempts');
-            return false; // Failed after all attempts
-        }
-
-        function refreshDesign(index) {
-            const iframe = document.getElementById(\`preview-\${index}\`);
-            const html = designHtmlCache[index];
-
-            if (!iframe || !html) {
-                showStatus('Unable to refresh this design', 'error');
-                return;
-            }
-
-            // Show loading indicator on the refresh button
-            const refreshBtn = document.querySelector(\`[onclick="refreshDesign(\${index})"]\`);
-            if (refreshBtn) {
-                const originalContent = refreshBtn.innerHTML;
-                refreshBtn.innerHTML = '<span class="codicon codicon-loading codicon-modifier-spin"></span>';
-                refreshBtn.disabled = true;
-
-                renderIframeWithRetry(iframe, html).then(success => {
-                    refreshBtn.innerHTML = originalContent;
-                    refreshBtn.disabled = false;
-                    if (success) {
-                        showStatus('Design refreshed successfully', 'success');
-                        setTimeout(clearStatus, 2000);
-                    } else {
-                        showStatus('Design may still appear blank - try clicking the preview', 'error');
-                    }
-                });
-            } else {
-                renderIframeWithRetry(iframe, html);
-            }
-        }
-
-        // Make refreshDesign globally accessible
-        window.refreshDesign = refreshDesign;
 
         // ===== DIMENSION PICKER =====
         const customDimensionsDiv = document.querySelector('.custom-dimensions');
@@ -409,9 +305,6 @@ export function getMainScript(): string {
                             <span class="design-name">\${escapeHtml(design.title)}</span>
                         </div>
                         <div class="design-header-actions">
-                            <button class="refresh-btn" onclick="refreshDesign(\${index})" title="Refresh this design if it appears blank">
-                                <span class="codicon codicon-refresh"></span>
-                            </button>
                             <button class="export-btn" onclick="exportDesign(\${index})" title="Export this design as a PNG image">
                                 <span class="codicon codicon-desktop-download"></span>
                                 Export as PNG
@@ -445,13 +338,10 @@ export function getMainScript(): string {
 
                 previewArea.appendChild(card);
 
-                // Cache the HTML for refresh functionality
-                designHtmlCache[index] = design.html;
-
-                // Render iframe with automatic retry
+                // Render iframe
                 const iframe = document.getElementById(\`preview-\${index}\`);
                 if (iframe) {
-                    renderIframeWithRetry(iframe, design.html);
+                    iframe.srcdoc = design.html;
                 }
             });
 
