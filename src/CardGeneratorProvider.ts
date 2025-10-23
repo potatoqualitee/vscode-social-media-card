@@ -276,18 +276,26 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
     private updateButtonState() {
         const hasValidEditor = !!vscode.window.activeTextEditor;
         const currentFile = vscode.window.activeTextEditor?.document.uri.toString();
-        const hasDesignsForCurrentFile = this.currentDesigns.length > 0 &&
-                                          this.currentSourceFile === currentFile;
 
-        // Clear cached summary if switching to a different file
-        if (this.cachedSummary && this.cachedSummary.sourceFile !== currentFile) {
+        // We have designs if currentDesigns is populated
+        const hasDesigns = this.currentDesigns.length > 0;
+
+        // If we have designs cached, we can always regenerate regardless of active editor
+        // This allows the button to stay as "Regenerate" even when preview panel is open
+        const shouldEnable = hasValidEditor || hasDesigns;
+
+        // Only clear cached summary if we're actually switching to a DIFFERENT file
+        // (not just losing focus because a preview panel opened)
+        if (this.cachedSummary &&
+            currentFile &&
+            this.cachedSummary.sourceFile !== currentFile) {
             this.cachedSummary = undefined;
         }
 
         this._view?.webview.postMessage({
             type: 'update-button-state',
-            enabled: hasValidEditor,
-            hasDesigns: hasDesignsForCurrentFile
+            enabled: shouldEnable,
+            hasDesigns: hasDesigns
         });
     }
 
@@ -482,10 +490,11 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
             const tempFilePath = await this.screenshotService.saveToTemp(imageData, dimensions);
 
             // Create a new webview panel
+            // Use ViewColumn.Beside to avoid changing the active editor context
             const panel = vscode.window.createWebviewPanel(
                 'cardPreview',
                 'Card Preview',
-                vscode.ViewColumn.One,
+                vscode.ViewColumn.Beside,
                 {
                     enableScripts: true,
                     retainContextWhenHidden: false

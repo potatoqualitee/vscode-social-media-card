@@ -25,12 +25,14 @@ export function getStyles(): string {
             gap: 12px;
             flex-shrink: 1;
             min-width: 0;
+            overflow: hidden;
         }
 
         .header-icon-inline {
             font-size: 28px;
             color: var(--vscode-textLink-foreground);
             opacity: 0.9;
+            flex-shrink: 0;
         }
 
         .header-title {
@@ -41,6 +43,8 @@ export function getStyles(): string {
             color: var(--vscode-foreground);
             letter-spacing: -0.03em;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .header-badge {
@@ -65,6 +69,7 @@ export function getStyles(): string {
             white-space: nowrap;
             min-width: auto;
             margin: 0;
+            flex-shrink: 0;
         }
 
         .header-description {
