@@ -490,11 +490,10 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
             const tempFilePath = await this.screenshotService.saveToTemp(imageData, dimensions);
 
             // Create a new webview panel
-            // Use ViewColumn.Beside to avoid changing the active editor context
             const panel = vscode.window.createWebviewPanel(
                 'cardPreview',
                 'Card Preview',
-                vscode.ViewColumn.Beside,
+                vscode.ViewColumn.Active,
                 {
                     enableScripts: true,
                     retainContextWhenHidden: false
