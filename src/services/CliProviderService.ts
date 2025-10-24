@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import * as vscode from 'vscode';
+import { OllamaService } from './OllamaService';
 
 export interface CliModelResponse {
     text: string;
@@ -11,6 +12,7 @@ export class CliProviderService {
      * @param cliCommand The CLI command to execute (e.g., 'claude', 'codex', 'gemini')
      * @param prompt The prompt to send to the CLI
      * @param workspaceFolder The workspace folder path
+     * @param context Extension context for state storage
      * @param cancellationToken Optional cancellation token
      * @returns The response text from the CLI
      */
@@ -18,19 +20,49 @@ export class CliProviderService {
         cliCommand: string,
         prompt: string,
         workspaceFolder: string,
+        context: vscode.ExtensionContext,
         cancellationToken?: vscode.CancellationToken
     ): Promise<CliModelResponse> {
-        return new Promise((resolve, reject) => {
-            // Check for cancellation before starting
-            if (cancellationToken?.isCancellationRequested) {
-                reject(new vscode.CancellationError());
-                return;
+        // Check for cancellation before starting
+        if (cancellationToken?.isCancellationRequested) {
+            throw new vscode.CancellationError();
+        }
+
+        // Handle Ollama specially - get the best model
+        let finalCommand = cliCommand;
+        let selectedModel: string | null = null;
+
+        if (cliCommand.startsWith('ollama run')) {
+            // Check config first
+            const config = vscode.workspace.getConfiguration('socialCardGenerator');
+            const configuredModel = config.get<string>('openaiCompatible.ollamaModelName', '');
+
+            if (configuredModel) {
+                selectedModel = configuredModel;
+            } else {
+                // Auto-detect best model
+                try {
+                    selectedModel = await OllamaService.getBestModel(context);
+                    if (!selectedModel) {
+                        throw new Error('No Ollama models found. Please run "ollama pull <model>" to download a model first.');
+                    }
+                } catch (error) {
+                    if (error instanceof Error) {
+                        throw new Error(`Failed to detect Ollama model: ${error.message}`);
+                    }
+                    throw error;
+                }
             }
 
-            console.log(`Executing CLI provider: ${cliCommand}`);
+            finalCommand = `${cliCommand} ${selectedModel}`;
+        }
+
+        console.log(`Executing CLI provider: ${finalCommand}`);
+
+        return new Promise((resolve, reject) => {
 
             // Spawn the CLI process
-            const cliProcess = spawn(cliCommand, [], {
+            const cliProcess = spawn(finalCommand, [], {
                 cwd: workspaceFolder,
                 env: process.env,
                 shell: true
@@ -58,6 +90,14 @@ export class CliProviderService {
 
                 if (code === 0) {
                     console.log(`CLI provider ${cliCommand} completed successfully`);
+
+                    // Save last used model for Ollama
+                    if (selectedModel && cliCommand.startsWith('ollama run')) {
+                        OllamaService.saveLastUsedModel(context, selectedModel).catch(err => {
+                            console.error('Failed to save last used Ollama model:', err);
+                        });
+                    }
+
                     resolve({ text: stdout });
                 } else {
                     console.error(`CLI provider ${cliCommand} failed with code ${code}`);

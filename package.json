@@ -53,7 +53,11 @@
         },
         "socialCardGenerator.promptMode": {
           "type": "string",
-          "enum": ["default", "append", "custom"],
+          "enum": [
+            "default",
+            "append",
+            "custom"
+          ],
           "default": "default",
           "enumDescriptions": [
             "Use the default design prompt",
@@ -70,7 +74,11 @@
         },
         "socialCardGenerator.loadingAnimation": {
           "type": "string",
-          "enum": ["spinner", "progress", "debug"],
+          "enum": [
+            "spinner",
+            "progress",
+            "debug"
+          ],
           "default": "spinner",
           "enumDescriptions": [
             "Show a simple spinning animation",
@@ -81,7 +89,11 @@
         },
         "socialCardGenerator.exportSaveMode": {
           "type": "string",
-          "enum": ["prompt", "relative", "absolute"],
+          "enum": [
+            "prompt",
+            "relative",
+            "absolute"
+          ],
           "default": "prompt",
           "enumDescriptions": [
             "Always show save dialog to choose location",
@@ -94,6 +106,31 @@
           "type": "string",
           "default": "",
           "description": "Absolute path for saving exported PNGs (only used when exportSaveMode is 'absolute')"
+        },
+        "socialCardGenerator.alwaysUseMiniForSummary": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Always use a Copilot GPT mini model for blog post summarization (Step 1), even when using CLI or OpenAI-Compatible API models. This can save costs but requires GitHub Copilot to be active."
+        },
+        "socialCardGenerator.openaiCompatible.baseUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Base URL for OpenAI-Compatible API. Examples:\n- Ollama: `http://localhost:11434/v1`\n- Azure: `https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT`\n- LM Studio: `http://localhost:1234/v1`"
+        },
+        "socialCardGenerator.openaiCompatible.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for OpenAI-Compatible API (leave empty for Ollama, required for Azure)"
+        },
+        "socialCardGenerator.openaiCompatible.modelName": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model name or deployment name. Examples:\n- Ollama: `llama3.1`, `qwen2.5-coder`\n- Azure: your deployment name\n- LM Studio: model name from the UI"
+        },
+        "socialCardGenerator.openaiCompatible.ollamaModelName": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model name to use with 'ollama run' CLI command. Leave empty to auto-detect running model or use last selected. Examples: `llama3.1`, `qwen2.5-coder`"
         }
       }
     }
@@ -107,12 +144,14 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.95.0",
     "@types/node": "^20.x",
+    "@types/vscode": "^1.95.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
     "typescript": "^5.3.3"
   },
-  "dependencies": {}
+  "dependencies": {
+    "openai": "^6.6.0"
+  }
 }

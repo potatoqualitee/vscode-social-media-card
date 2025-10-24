@@ -145,5 +145,32 @@ export function getStyles(): string {
             align-items: center;
             gap: 10px;
         }
+
+        /* Bottom actions for settings */
+        .settings-bottom-actions {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--vscode-panel-border);
+            display: flex;
+            justify-content: center;
+        }
+
+        .settings-back-btn-bottom {
+            padding: 10px 20px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid var(--vscode-button-border);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            transition: background-color 0.2s;
+        }
+
+        .settings-back-btn-bottom:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+        }
     `;
 }

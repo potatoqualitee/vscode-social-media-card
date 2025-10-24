@@ -25,6 +25,16 @@ export class ModelManager {
     }
 
     public async initialize() {
+        // If the last selected model was a CLI provider or OpenAI-compatible,
+        // we can show it immediately without loading
+        if (this.selectedModelId &&
+            (this.selectedModelId.startsWith('cli:') || this.selectedModelId === 'openai-compatible')) {
+            this.isLoadingModels = false;
+            // Send initial state with CLI model selected
+            this.notifyModelsChanged();
+        }
+
+        // Then fetch VS Code LM models in the background
         await this.refreshAvailableModels(true);
 
         // Listen for model changes
@@ -115,6 +125,25 @@ export class ModelManager {
                 maxInputTokens: 1000000,
                 isCli: true,
                 cliCommand: 'gemini'
+            },
+            {
+                id: 'cli:ollama',
+                vendor: 'cli',
+                family: 'ollama',
+                version: '',
+                name: 'Ollama (ollama run)',
+                maxInputTokens: 128000,
+                isCli: true,
+                cliCommand: 'ollama run'
+            },
+            {
+                id: 'openai-compatible',
+                vendor: 'openai-compatible',
+                family: 'openai-compatible',
+                version: '',
+                name: 'OpenAI-Compatible API',
+                maxInputTokens: 128000,
+                isCli: false
             }
         ];
 
@@ -191,11 +220,11 @@ export class ModelManager {
             // VS Code LM API currently supports:
             // - GitHub Copilot models (GPT-4o, GPT-4o-mini, o1, o1-mini, o1-preview)
             // - Claude 3.5 Sonnet (but NOT newer Claude 3.7+ or 4.x models yet)
-            // - Local models (Ollama, etc.)
             //
             // Models NOT supported by 3rd party apps:
             // - xAI/Grok models
             // - Gemini models
+            // - Ollama models (use CLI provider instead)
             const filteredModels = allModels.filter(model => {
                 const vendor = model.vendor?.toLowerCase() || '';
                 const family = model.family?.toLowerCase() || '';
@@ -208,6 +237,11 @@ export class ModelManager {
 
                 // Filter out Gemini - not supported by 3rd party apps
                 if (vendor === 'google' || family.includes('gemini')) {
+                    return false;
+                }
+
+                // Filter out Ollama - use CLI provider instead to avoid embedding model issues
+                if (vendor === 'ollama' || family.includes('ollama') || id.includes('ollama')) {
                     return false;
                 }
 

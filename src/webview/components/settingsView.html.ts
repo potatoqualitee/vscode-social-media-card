@@ -58,6 +58,14 @@ export function getSettingsView(): string {
                     </select>
                 </div>
             </div>
+
+            <!-- Bottom Back Button -->
+            <div class="settings-bottom-actions">
+                <button class="settings-back-btn-bottom" id="settings-back-btn-bottom">
+                    <span class="codicon codicon-arrow-left"></span>
+                    Back to Chat
+                </button>
+            </div>
         </div>
     `;
 }

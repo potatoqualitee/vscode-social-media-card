@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CliProviderService } from './services/CliProviderService';
+import { OpenAiCompatibleService } from './services/OpenAiCompatibleService';
 import { ModelInfo } from './managers/ModelManager';
 
 export interface CardDesign {
@@ -21,8 +22,10 @@ export interface BlogSummary {
 }
 
 export class CardGenerator {
+    constructor(private context: vscode.ExtensionContext) {}
+
     /**
-     * Send a request to either a VSCode LM model or a CLI provider
+     * Send a request to either a VSCode LM model, CLI provider, or OpenAI-Compatible API
      */
     private async sendModelRequest(
         prompt: string,
@@ -30,6 +33,27 @@ export class CardGenerator {
         modelInfo?: ModelInfo,
         cancellationToken?: vscode.CancellationToken
     ): Promise<string> {
+        // Check if it's the OpenAI-Compatible API provider
+        if (modelInfo?.id === 'openai-compatible') {
+            console.log('Using OpenAI-Compatible API');
+
+            // Get the best model to use
+            const modelName = await OpenAiCompatibleService.getBestModel(this.context);
+            if (!modelName) {
+                throw new Error('No model configured for OpenAI-Compatible API. Please configure it in Settings.');
+            }
+
+            const response = await OpenAiCompatibleService.sendRequest(
+                prompt,
+                cancellationToken
+            );
+
+            // Save the last used model
+            await OpenAiCompatibleService.saveLastUsedModel(this.context, modelName);
+
+            return response.text;
+        }
+
         // If modelInfo indicates it's a CLI provider, use CLI execution
         if (modelInfo?.isCli && modelInfo.cliCommand) {
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
@@ -39,6 +63,7 @@ export class CardGenerator {
                 modelInfo.cliCommand,
                 prompt,
                 workspaceFolder,
+                this.context,
                 cancellationToken
             );
 
@@ -349,81 +374,107 @@ ${technicalRequirements}`;
         }
     }
 
-    async summarizeBlogPost(blogContent: string, onModelSelected?: (modelName: string) => void, debugCallback?: (message: string) => void, cancellationToken?: vscode.CancellationToken): Promise<BlogSummary> {
-        // Get all available models and find the best mini model
-        const allModels = await vscode.lm.selectChatModels();
+    async summarizeBlogPost(
+        blogContent: string,
+        model?: vscode.LanguageModelChat,
+        modelInfo?: ModelInfo,
+        onModelSelected?: (modelName: string) => void,
+        debugCallback?: (message: string) => void,
+        cancellationToken?: vscode.CancellationToken
+    ): Promise<BlogSummary> {
+        let modelName: string;
+        let summaryModel: vscode.LanguageModelChat | undefined = model;
+        let summaryModelInfo: ModelInfo | undefined = modelInfo;
 
-        if (allModels.length === 0) {
-            throw new Error('No language models available. Please ensure GitHub Copilot is active.');
-        }
+        // Check if user wants to always use mini model for summarization
+        const config = vscode.workspace.getConfiguration('socialCardGenerator');
+        const alwaysUseMini = config.get<boolean>('alwaysUseMiniForSummary', false);
 
-        // Look for mini models in order of preference
-        // Priority: gpt-5-mini > gpt-4o-mini > any other mini model > first available model
-        let model: vscode.LanguageModelChat | undefined;
+        // Determine which model to use for summarization
+        const shouldUseMini = alwaysUseMini || !modelInfo || (!modelInfo.isCli && modelInfo.id !== 'openai-compatible');
 
-        // Helper function to get most recent version of models
-        const getMostRecent = (models: vscode.LanguageModelChat[]) => {
-            return models.sort((a, b) => {
-                const dateRegex = /(\d{4}-\d{2}-\d{2})/;
-                const dateA = a.id.match(dateRegex)?.[1];
-                const dateB = b.id.match(dateRegex)?.[1];
+        if (!shouldUseMini) {
+            // Use the selected CLI or OpenAI-compatible model
+            modelName = modelInfo!.name;
+            console.log(`Using selected model for summarization: ${modelName}`);
+        } else {
+            // Use a mini model to save costs
+            const allModels = await vscode.lm.selectChatModels();
 
-                if (dateA && dateB) {
-                    return dateB.localeCompare(dateA); // Most recent first
-                }
-                return b.id.localeCompare(a.id);
-            })[0];
-        };
+            if (allModels.length === 0) {
+                throw new Error('No language models available. Please ensure GitHub Copilot is active.');
+            }
 
-        // First priority: GPT-5 mini
-        const gpt5MiniModels = allModels.filter(m => {
-            const family = m.family?.toLowerCase() || '';
-            const id = m.id?.toLowerCase() || '';
-            return (family.includes('gpt-5') || family.includes('gpt5') || id.includes('gpt-5') || id.includes('gpt5')) &&
-                   (family.includes('mini') || id.includes('mini'));
-        });
+            // Look for mini models in order of preference
+            let miniModel: vscode.LanguageModelChat | undefined;
 
-        if (gpt5MiniModels.length > 0) {
-            model = getMostRecent(gpt5MiniModels);
-        }
+            // Helper function to get most recent version of models
+            const getMostRecent = (models: vscode.LanguageModelChat[]) => {
+                return models.sort((a, b) => {
+                    const dateRegex = /(\d{4}-\d{2}-\d{2})/;
+                    const dateA = a.id.match(dateRegex)?.[1];
+                    const dateB = b.id.match(dateRegex)?.[1];
 
-        // Second priority: GPT-4o mini
-        if (!model) {
-            const gpt4oMiniModels = allModels.filter(m => {
+                    if (dateA && dateB) {
+                        return dateB.localeCompare(dateA); // Most recent first
+                    }
+                    return b.id.localeCompare(a.id);
+                })[0];
+            };
+
+            // First priority: GPT-5 mini
+            const gpt5MiniModels = allModels.filter(m => {
                 const family = m.family?.toLowerCase() || '';
                 const id = m.id?.toLowerCase() || '';
-                return (family.includes('gpt-4o') || id.includes('gpt-4o')) &&
+                return (family.includes('gpt-5') || family.includes('gpt5') || id.includes('gpt-5') || id.includes('gpt5')) &&
                        (family.includes('mini') || id.includes('mini'));
             });
 
-            if (gpt4oMiniModels.length > 0) {
-                model = getMostRecent(gpt4oMiniModels);
+            if (gpt5MiniModels.length > 0) {
+                miniModel = getMostRecent(gpt5MiniModels);
             }
-        }
 
-        // Third priority: any other mini model
-        if (!model) {
-            const anyMiniModels = allModels.filter(m => {
-                const family = m.family?.toLowerCase() || '';
-                const id = m.id?.toLowerCase() || '';
-                return family.includes('mini') || id.includes('mini');
-            });
+            // Second priority: GPT-4o mini
+            if (!miniModel) {
+                const gpt4oMiniModels = allModels.filter(m => {
+                    const family = m.family?.toLowerCase() || '';
+                    const id = m.id?.toLowerCase() || '';
+                    return (family.includes('gpt-4o') || id.includes('gpt-4o')) &&
+                           (family.includes('mini') || id.includes('mini'));
+                });
 
-            if (anyMiniModels.length > 0) {
-                model = getMostRecent(anyMiniModels);
+                if (gpt4oMiniModels.length > 0) {
+                    miniModel = getMostRecent(gpt4oMiniModels);
+                }
             }
+
+            // Third priority: any other mini model
+            if (!miniModel) {
+                const anyMiniModels = allModels.filter(m => {
+                    const family = m.family?.toLowerCase() || '';
+                    const id = m.id?.toLowerCase() || '';
+                    return family.includes('mini') || id.includes('mini');
+                });
+
+                if (anyMiniModels.length > 0) {
+                    miniModel = getMostRecent(anyMiniModels);
+                }
+            }
+
+            // Last resort: use the first available model
+            if (!miniModel) {
+                miniModel = allModels[0];
+                console.warn('No mini model found, using fallback model:', miniModel.id);
+            }
+
+            // Use the mini model for VS Code LM
+            summaryModel = miniModel;
+            summaryModelInfo = undefined; // Clear modelInfo since we're using VS Code LM
+            modelName = miniModel.name || miniModel.id || miniModel.family || 'Unknown model';
+            console.log(`Using mini model for summarization: ${miniModel.id} (${miniModel.family})`);
         }
 
-        // Last resort: use the first available model
-        if (!model) {
-            model = allModels[0];
-            console.warn('No mini model found, using fallback model:', model.id);
-        }
-
-        console.log(`Using model for summarization: ${model.id} (${model.family})`);
-
-        // Get model name and notify via callback if provided
-        const modelName = model.name || model.id || model.family || 'Unknown model';
+        // Notify via callback if provided
         if (onModelSelected) {
             onModelSelected(modelName);
         }
@@ -452,33 +503,16 @@ Return ONLY valid JSON in this exact format:
             debugCallback(`\n=== Step 1: Summarization ===\nModel: ${modelName}\n\n--- Prompt ---\n${prompt}\n\n--- Response ---\n`);
         }
 
-        const messages = [vscode.LanguageModelChatMessage.User(prompt)];
-
         try {
-            // Wrap the API call in retry logic
+            // Use sendModelRequest to support CLI/OpenAI-compatible models
             const fullResponse = await this.retryApiCall(async () => {
-                const response = await model.sendRequest(
-                    messages,
-                    {},
-                    cancellationToken || new vscode.CancellationTokenSource().token
-                );
-
-                let text = '';
-                let streamedToDebug = false;
-                for await (const fragment of response.text) {
-                    text += fragment;
-                    // Only stream the first part to debug console (stop after we see opening brace)
-                    if (!streamedToDebug && debugCallback) {
-                        debugCallback(fragment);
-                        // Stop streaming to debug once we hit the JSON response
-                        if (text.includes('{')) {
-                            debugCallback('... [JSON response received, rendering designs]\n');
-                            streamedToDebug = true;
-                        }
-                    }
-                }
-                return text;
+                return await this.sendModelRequest(prompt, summaryModel, summaryModelInfo, cancellationToken);
             }, 3, cancellationToken);
+
+            // Send response to debug console
+            if (debugCallback) {
+                debugCallback('... [JSON response received, rendering designs]\n');
+            }
 
             console.log('=== SUMMARIZATION RESPONSE ===');
             console.log(fullResponse);

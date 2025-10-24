@@ -758,6 +758,12 @@ export function getMainScript(): string {
             mainView.classList.remove('hidden');
         });
 
+        // Bottom back button (same functionality)
+        document.getElementById('settings-back-btn-bottom').addEventListener('click', function() {
+            settingsView.classList.remove('active');
+            mainView.classList.remove('hidden');
+        });
+
         document.getElementById('num-designs').addEventListener('change', function() {
             const value = parseInt(this.value);
             if (value >= 1 && value <= 10) {

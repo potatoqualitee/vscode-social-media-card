@@ -18,7 +18,7 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
     private cachedBlogContent?: string; // Cached blog content to support regeneration when no active editor
 
     constructor(private readonly _extensionUri: vscode.Uri, private readonly context: vscode.ExtensionContext) {
-        this.cardGenerator = new CardGenerator();
+        this.cardGenerator = new CardGenerator(context);
         this.screenshotService = new ScreenshotService();
         this.modelManager = new ModelManager(context);
 
@@ -363,6 +363,8 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
 
                 const summaryResult = await this.cardGenerator.summarizeBlogPost(
                     blogContent,
+                    this.modelManager.getSelectedModel(),
+                    this.modelManager.getSelectedModelInfo(),
                     (modelName) => {
                         // Update status with actual model being used
                         this._view?.webview.postMessage({
