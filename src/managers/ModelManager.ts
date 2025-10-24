@@ -97,11 +97,21 @@ export class ModelManager {
                 isCli: false
             },
             {
+                id: 'cli:cursor',
+                vendor: 'cli',
+                family: 'cursor',
+                version: '',
+                name: 'Cursor',
+                maxInputTokens: 200000,
+                isCli: true,
+                cliCommand: 'cursor-agent'
+            },
+            {
                 id: 'cli:claude',
                 vendor: 'cli',
                 family: 'claude',
                 version: '',
-                name: 'Claude (claude)',
+                name: 'Claude',
                 maxInputTokens: 200000,
                 isCli: true,
                 cliCommand: 'claude'
@@ -111,7 +121,7 @@ export class ModelManager {
                 vendor: 'cli',
                 family: 'codex',
                 version: '',
-                name: 'Codex (codex exec)',
+                name: 'Codex',
                 maxInputTokens: 100000,
                 isCli: true,
                 cliCommand: 'codex exec'
@@ -121,7 +131,7 @@ export class ModelManager {
                 vendor: 'cli',
                 family: 'gemini',
                 version: '',
-                name: 'Gemini (gemini)',
+                name: 'Gemini',
                 maxInputTokens: 1000000,
                 isCli: true,
                 cliCommand: 'gemini'
@@ -131,7 +141,7 @@ export class ModelManager {
                 vendor: 'cli',
                 family: 'ollama',
                 version: '',
-                name: 'Ollama (ollama run)',
+                name: 'Ollama',
                 maxInputTokens: 128000,
                 isCli: true,
                 cliCommand: 'ollama run'
@@ -384,6 +394,15 @@ export class ModelManager {
                     word.charAt(0).toUpperCase() + word.slice(1)
                 ).join(' ');
                 displayName += ` ${formatted}`;
+            }
+            if (version) {
+                displayName += ` ${version}`;
+            }
+        } else if (family.toLowerCase().includes('cursor')) {
+            displayName = 'Cursor';
+            const variant = family.replace(/cursor-?/i, '').trim();
+            if (variant) {
+                displayName += ` ${variant.toUpperCase()}`;
             }
             if (version) {
                 displayName += ` ${version}`;

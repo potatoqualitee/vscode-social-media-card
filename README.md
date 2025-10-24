@@ -1,11 +1,12 @@
 # Social Media Card Generator
 
-Generate beautiful social media cards for your blog posts using AI, powered by multiple LLM providers including GitHub Copilot, OpenAI-Compatible APIs, and Ollama.
+Generate beautiful social media cards for your blog posts using AI, powered by multiple LLM providers including GitHub Copilot, Cursor AI, OpenAI-Compatible APIs, and Ollama.
 
 ## Features
 
 - **AI-Powered Design**: Analyze your blog posts and generate multiple design variations using:
   - GitHub Copilot (requires active subscription)
+  - Cursor AI (cursor-agent)
   - OpenAI-Compatible APIs (Azure, OpenAI, LM Studio, etc.)
   - Ollama (local or remote models)
 - **Multiple Platforms**: Presets for Standard OG (1200×630), Instagram (1080×1080), Pinterest (1000×1500)
@@ -20,6 +21,7 @@ Generate beautiful social media cards for your blog posts using AI, powered by m
 - **VS Code**: Version 1.95.0 or higher
 - **One of the following AI providers**:
   - **GitHub Copilot**: Active subscription required
+  - **Cursor AI**: Available in Cursor editor
   - **OpenAI API**: API key required (supports OpenAI, Azure, LM Studio, and other compatible APIs)
   - **Ollama**: Free and open-source LLM platform (local or remote instance)
 
@@ -59,7 +61,8 @@ No external browsers or dependencies are needed for PNG export.
 - **Activity Bar Icon**: Provides quick access to the extension
 - **Webview Sidebar**: Interactive UI for dimension selection, provider selection, and preview
 - **Language Model API**: Leverages multiple LLM providers:
-  - GitHub Copilot (GPT-4o)
+  - GitHub Copilot
+  - Cursor AI
   - OpenAI-Compatible APIs (OpenAI, Azure, LM Studio, etc.)
   - Ollama (local or remote instances)
 - **html2canvas**: In-browser HTML to PNG conversion (no external dependencies)
@@ -129,9 +132,10 @@ Control how many design variations are generated (1-10):
 ### "No language models available"
 
 - If using GitHub Copilot: Ensure the extension is installed and active, and you have an active subscription
+- If using Cursor AI: Ensure you're using the Cursor editor with the extension installed
 - If using OpenAI-Compatible API: Verify your API endpoint and key are correctly configured
 - If using Ollama: Ensure Ollama is running and the correct URL is specified
-- Try reloading the VS Code window
+- Try reloading the window
 
 ### "No workspace folder open"
 
