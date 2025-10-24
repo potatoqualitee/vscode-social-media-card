@@ -108,12 +108,12 @@ export function getMainScript(): string {
             currentLoadingIndex = 0;
             const btn = document.getElementById('generate-btn');
             const message = loadingMessages[currentLoadingIndex];
-            btn.innerHTML = \`<span class="spinner"></span><span>\${stepText}: \${message}... This usually takes a minute or two <span class="codicon codicon-watch"></span></span>\`;
+            btn.innerHTML = \`<span class="spinner"></span><span>\${stepText}: \${message}... This usually takes a minute or two.\`;
 
             loadingMessageInterval = setInterval(() => {
                 currentLoadingIndex = (currentLoadingIndex + 1) % loadingMessages.length;
                 const message = loadingMessages[currentLoadingIndex];
-                btn.innerHTML = \`<span class="spinner"></span><span>\${stepText}: \${message}... This usually takes a minute or two <span class="codicon codicon-watch"></span></span>\`;
+                btn.innerHTML = \`<span class="spinner"></span><span>\${stepText}: \${message}... This usually takes a minute or two..</span>\`;
             }, 10000);
         }
 
@@ -135,7 +135,7 @@ export function getMainScript(): string {
                             <div class="progress-bar-wrapper">
                                 <div class="progress-bar-fill" id="progress-fill"></div>
                             </div>
-                            <div class="progress-bar-time" id="progress-time">This usually takes a minute or two <span class="codicon codicon-watch"></span></div>
+                            <div class="progress-bar-time" id="progress-time">This usually takes a minute or two..</div>
                             <div class="progress-bar-overtime" id="overtime-message" style="display: none;"></div>
                         </div>
                     </div>
@@ -158,7 +158,7 @@ export function getMainScript(): string {
 
                     if (timeEl) {
                         if (elapsed < 30000) {
-                            timeEl.innerHTML = 'This usually takes a minute or two... <span class="codicon codicon-watch"></span>';
+                            timeEl.innerHTML = 'This usually takes a minute or two.....';
                         } else if (elapsed < 60000) {
                             timeEl.textContent = 'Still working on it...';
                         } else if (elapsed < 90000) {

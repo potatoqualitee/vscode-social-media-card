@@ -8,7 +8,7 @@ export function getPageHeader(): string {
                 </div>
                 <button id="generate-btn">Generate Designs</button>
             </div>
-            <p class="header-description">Generate social media cards from your content</p>
+            <p class="header-description">Generate social media cards from your file contents</p>
         </div>
     `;
 }
