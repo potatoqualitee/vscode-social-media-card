@@ -4,11 +4,7 @@ Generate beautiful social media cards for your blog posts using AI, powered by m
 
 ## Features
 
-- **AI-Powered Design**: Analyze your blog posts and generate multiple design variations using:
-  - GitHub Copilot (requires active subscription)
-  - Cursor AI (cursor-agent)
-  - OpenAI-Compatible APIs (Azure, OpenAI, LM Studio, etc.)
-  - Ollama (local or remote models)
+- **AI-Powered Design**: Analyze your blog posts and generate multiple design variations using any of 6+ supported AI providers
 - **Multiple Platforms**: Presets for Standard OG (1200×630), Instagram (1080×1080), Pinterest (1000×1500)
 - **Custom Dimensions**: Set any custom dimensions you need
 - **Live Preview**: See designs rendered in real-time before exporting
