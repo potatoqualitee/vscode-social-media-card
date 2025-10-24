@@ -923,10 +923,8 @@ export function getMainScript(): string {
                     sendChatBtn.disabled = chatInput.value.trim().length === 0;
                     break;
                 case 'error':
-                    // Only process if we're still generating (not cancelled)
-                    if (!isGenerating) {
-                        break;
-                    }
+                    // Always clean up UI state on errors, even if generation was already stopped
+                    // This ensures progress bars are cleared for late-arriving errors (e.g., 400 responses)
                     isGenerating = false;
                     stopLoadingMessages();
                     hideLoadingAnimation();
