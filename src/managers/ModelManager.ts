@@ -225,6 +225,7 @@ export class ModelManager {
             // - xAI/Grok models
             // - Gemini models
             // - Ollama models (use CLI provider instead)
+            // - AITK models (support to be added later)
             const filteredModels = allModels.filter(model => {
                 const vendor = model.vendor?.toLowerCase() || '';
                 const family = model.family?.toLowerCase() || '';
@@ -242,6 +243,11 @@ export class ModelManager {
 
                 // Filter out Ollama - use CLI provider instead to avoid embedding model issues
                 if (vendor === 'ollama' || family.includes('ollama') || id.includes('ollama')) {
+                    return false;
+                }
+
+                // Filter out AITK - support to be added later
+                if (vendor === 'aitk' || family.includes('aitk') || id.includes('aitk')) {
                     return false;
                 }
 
