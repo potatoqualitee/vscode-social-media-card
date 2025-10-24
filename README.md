@@ -20,10 +20,24 @@ Generate beautiful social media cards for your blog posts using AI, powered by m
 
 - **VS Code**: Version 1.95.0 or higher
 - **One of the following AI providers**:
-  - **GitHub Copilot**: Active subscription required
-  - **Cursor AI**: Available in Cursor editor
-  - **OpenAI API**: API key required (supports OpenAI, Azure, LM Studio, and other compatible APIs)
+  - **GitHub Copilot**: Free tier available
+  - **Cursor AI**: Free tier available
+  - **Google Gemini**: Free tier available
+  - **Claude Code**: Subscription required
   - **Ollama**: Free and open-source LLM platform (local or remote instance)
+  - **OpenAI API**: API key required (supports OpenAI, Azure, LM Studio, and other compatible APIs)
+
+### Supported CLIs
+
+The extension supports the following command-line interfaces for AI providers:
+
+- **claude**: Anthropic's command-line tool
+- **codex**: OpenAI's command-line tool
+- **cursor-agent**: Cursor AI's command-line tool
+- **gemini**: Google Gemini CLI for accessing Google's models
+- **ollama**: Ollama command-line interface for running local models
+
+Each CLI needs to be installed and configured separately. The extension will automatically detect available CLIs in your system PATH.
 
 No external browsers or dependencies are needed for PNG export.
 
