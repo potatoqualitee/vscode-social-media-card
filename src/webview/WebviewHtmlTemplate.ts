@@ -12,6 +12,7 @@ export function getWebviewHtml(webview: vscode.Webview): string {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline' https://microsoft.github.io; script-src 'unsafe-inline' https://cdnjs.cloudflare.com; img-src ${webview.cspSource} data:; font-src ${webview.cspSource} https://microsoft.github.io;">
         <title>Social Card Generator</title>
         <link rel="stylesheet" href="https://microsoft.github.io/vscode-codicons/dist/codicon.css">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
