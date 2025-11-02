@@ -3,9 +3,7 @@
     "allow": [
       "Bash(npm install)",
       "Bash(npm run compile:*)",
-      "Bash(npm prune:*)",
-      "Bash(npm install:*)",
-      "Bash(npx @vscode/vsce:*)"
+      "Bash(npm prune:*)"
     ],
     "deny": [],
     "ask": []

@@ -142,8 +142,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "node esbuild.js --production",
-    "watch": "node esbuild.js --watch",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
@@ -153,7 +153,6 @@
     "@types/vscode": "^1.95.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
-    "esbuild": "^0.25.11",
     "eslint": "^8.57.0",
     "typescript": "^5.3.3"
   },
