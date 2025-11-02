@@ -4,10 +4,16 @@ export function getChatInterface(): string {
         <div class="chat-container">
             <div id="generation-progress-bar" class="generation-progress-bar hidden"></div>
             <div class="chat-header">
-                <label for="agent-select">Model:</label>
-                <select id="agent-select" class="agent-selector">
-                    <option value="">Loading models...</option>
-                </select>
+                <div class="chat-header-group">
+                    <label for="agent-select">Model:</label>
+                    <select id="agent-select" class="agent-selector">
+                        <option value="">Loading models...</option>
+                    </select>
+                </div>
+                <div class="chat-header-group">
+                    <label for="num-designs">Designs:</label>
+                    <input type="number" id="num-designs" class="num-designs-input" min="1" max="10" value="5" title="Number of design variations to generate (1-10)">
+                </div>
                 <button id="clear-chat-btn" class="chat-action-btn" title="Clear conversation history" style="margin-left: auto;">
                     <span class="codicon codicon-trash"></span>
                     Clear

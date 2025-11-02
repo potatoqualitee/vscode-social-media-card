@@ -25,6 +25,17 @@ export class CardGenerator {
     constructor(private context: vscode.ExtensionContext) {}
 
     /**
+     * Clip long text for display in debug output
+     */
+    private clipForDisplay(text: string, maxLength: number = 300): string {
+        if (text.length <= maxLength) {
+            return text;
+        }
+        const halfLength = Math.floor(maxLength / 2);
+        return `${text.substring(0, halfLength)}\n\n--- [clipped for brevity] ---\n\n${text.substring(text.length - halfLength)}`;
+    }
+
+    /**
      * Send a request to either a VSCode LM model, CLI provider, or OpenAI-Compatible API
      */
     private async sendModelRequest(
@@ -231,9 +242,88 @@ export class CardGenerator {
     }
 
     /**
+     * Generate fresh best practices from the AI model
+     */
+    private async generateBestPractices(
+        title: string,
+        summary: string,
+        dimensions: { width: number; height: number },
+        model?: vscode.LanguageModelChat,
+        modelInfo?: ModelInfo,
+        cancellationToken?: vscode.CancellationToken,
+        debugCallback?: (message: string) => void
+    ): Promise<string> {
+        const prompt = `You are an expert in social media card design and marketing. Generate best practices for creating an effective social media card for the following content:
+
+Title: ${title}
+Summary: ${summary}
+Dimensions: ${dimensions.width}x${dimensions.height}px
+
+Generate fresh, creative best practices that will help create unique and engaging social media cards. Focus on:
+1. Content strategy - what message should be emphasized
+2. Typography choices - font sizes, weights, and styles
+3. Color and contrast - effective color schemes
+4. Layout and composition - creative approaches
+5. What to avoid
+
+Be specific and actionable. Your best practices will be used to guide the design generation.
+
+Return your best practices as plain text (not JSON), focusing on creating variety and preventing repetitive designs.`;
+
+        console.log('=== BEST PRACTICES GENERATION PROMPT ===');
+        console.log(prompt);
+        console.log('=== END PROMPT ===');
+
+        // Send prompt to debug callback if available (with clipped summary for brevity)
+        if (debugCallback) {
+            const displayPrompt = `You are an expert in social media card design and marketing. Generate best practices for creating an effective social media card for the following content:
+
+Title: ${title}
+Summary: ${this.clipForDisplay(summary)}
+Dimensions: ${dimensions.width}x${dimensions.height}px
+
+Generate fresh, creative best practices that will help create unique and engaging social media cards. Focus on:
+1. Content strategy - what message should be emphasized
+2. Typography choices - font sizes, weights, and styles
+3. Color and contrast - effective color schemes
+4. Layout and composition - creative approaches
+5. What to avoid
+
+Be specific and actionable. Your best practices will be used to guide the design generation.
+
+Return your best practices as plain text (not JSON), focusing on creating variety and preventing repetitive designs.`;
+
+            debugCallback(`\n--- Best Practices Prompt ---\n${displayPrompt}\n\n--- Best Practices Response ---\n`);
+        }
+
+        try {
+            const response = await this.retryApiCall(async () => {
+                return await this.sendModelRequest(prompt, model, modelInfo, cancellationToken);
+            }, 3, cancellationToken);
+
+            console.log('=== GENERATED BEST PRACTICES ===');
+            console.log(response);
+            console.log('=== END GENERATED BEST PRACTICES ===');
+
+            if (debugCallback) {
+                debugCallback(`${response}\n`);
+            }
+
+            return response;
+        } catch (err) {
+            console.error('Failed to generate best practices, falling back to default:', err);
+            if (debugCallback) {
+                debugCallback(`ERROR: ${err instanceof Error ? err.message : 'Unknown error'}\n`);
+            }
+            // Return empty string to signal fallback to default
+            return '';
+        }
+    }
+
+    /**
      * Builds the design prompt based on user settings and template variables
      */
-    private buildDesignPrompt(
+    private async buildDesignPrompt(
         title: string,
         summary: string,
         dimensions: { width: number; height: number },
@@ -241,8 +331,12 @@ export class CardGenerator {
         numberOfDesigns: number,
         isBatchMode: boolean = false,
         chatMessage?: string,
-        fullContent?: string
-    ): string {
+        fullContent?: string,
+        model?: vscode.LanguageModelChat,
+        modelInfo?: ModelInfo,
+        cancellationToken?: vscode.CancellationToken,
+        dynamicBestPractices?: string
+    ): Promise<string> {
         const config = vscode.workspace.getConfiguration('socialCardGenerator');
         // If chatMessage is provided, treat it as append mode (override user's setting)
         const promptMode = chatMessage ? 'append' : config.get<string>('promptMode', 'default');
@@ -305,15 +399,15 @@ The HTML should be self-contained with all CSS inline or in <style> tags. Use th
             ? `Full blog post content:\n${fullContent}`
             : `Blog post title: ${title}\n\nBlog post summary: ${summary}`;
 
-        const defaultPromptContent = `${designInstruction}
+        // Determine which best practices to use
+        let bestPracticesSection: string;
 
-${contentSection}
-
-Card dimensions: ${dimensions.width}x${dimensions.height}px
-
-${uniquenessInstruction}
-
-Requirements:
+        if (dynamicBestPractices && dynamicBestPractices.trim()) {
+            // Use the dynamically generated best practices
+            bestPracticesSection = `Best Practices (Generated specifically for this content):\n\n${dynamicBestPractices}`;
+        } else {
+            // Use the default built-in best practices
+            bestPracticesSection = `Requirements:
 
 CONTENT & HIERARCHY:
 - Use the title and summary to craft the most compelling message - what would make someone stop scrolling?
@@ -353,6 +447,17 @@ AVOID:
 - Placing text near edges
 - Generic stock imagery
 - Using background-clip: text or -webkit-background-clip: text (not supported in PNG export - use solid colors instead)${isBatchMode ? '\n- Making all designs look too similar' : ''}`;
+        }
+
+        const defaultPromptContent = `${designInstruction}
+
+${contentSection}
+
+Card dimensions: ${dimensions.width}x${dimensions.height}px
+
+${uniquenessInstruction}
+
+${bestPracticesSection}`;
 
         // Build the final prompt based on mode
         if (promptMode === 'append' && customInstructions.trim()) {
@@ -502,9 +607,24 @@ Return ONLY valid JSON in this exact format:
         console.log(prompt);
         console.log('=== END PROMPT ===');
 
-        // Send prompt to debug console immediately (before API call)
+        // Send prompt to debug console immediately (before API call, with clipped content)
         if (debugCallback) {
-            debugCallback(`\n=== Step 1: Summarization ===\nModel: ${modelName}\n\n--- Prompt ---\n${prompt}\n\n--- Response ---\n`);
+            const displayPrompt = `Analyze this blog post and extract:
+1. A clear, compelling title (5-10 words max)
+2. A concise summary that captures the main points (2-3 sentences)
+3. A suggested filename for exported images (lowercase, hyphenated, no file extension, max 50 chars)
+
+Blog post content:
+${this.clipForDisplay(blogContent, 400)}
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "The extracted or refined title",
+  "summary": "A 2-3 sentence summary of the key points",
+  "suggestedFilename": "descriptive-filename-without-extension"
+}`;
+
+            debugCallback(`\n=== Step 1: Summarization ===\nModel: ${modelName}\n\n--- Prompt ---\n${displayPrompt}\n\n--- Response ---\n`);
         }
 
         try {
@@ -603,6 +723,44 @@ Return ONLY valid JSON in this exact format:
 
         console.log(`Generating ${numberOfDesigns} designs separately for better quality`);
 
+        // Check if we should generate dynamic best practices
+        const config = vscode.workspace.getConfiguration('socialCardGenerator');
+        const bestPracticesMode = config.get<string>('bestPracticesMode', 'default');
+        let dynamicBestPractices: string | undefined;
+
+        console.log(`Best Practices Mode: ${bestPracticesMode}`);
+
+        if (bestPracticesMode === 'dynamic') {
+            console.log('Generating dynamic best practices...');
+            if (debugCallback) {
+                debugCallback(`\n=== Generating Dynamic Best Practices ===\n`);
+            }
+            try {
+                dynamicBestPractices = await this.generateBestPractices(
+                    title,
+                    summary,
+                    dimensions,
+                    model,
+                    modelInfo,
+                    cancellationToken,
+                    debugCallback
+                );
+                if (debugCallback) {
+                    if (dynamicBestPractices) {
+                        debugCallback(`\nBest practices generated successfully.\n`);
+                    } else {
+                        debugCallback(`\nBest practices generation returned empty, using default.\n`);
+                    }
+                }
+            } catch (err) {
+                console.error('Error generating best practices:', err);
+                if (debugCallback) {
+                    debugCallback(`\nBest practices generation failed, using default.\n`);
+                }
+                dynamicBestPractices = undefined;
+            }
+        }
+
         if (debugCallback) {
             const modelName = modelInfo?.name || model?.name || model?.id || model?.family || 'Unknown model';
             debugCallback(`\n=== Step 2: Design Generation (Separate Requests) ===\nModel: ${modelName}\nGenerating ${numberOfDesigns} designs with separate API calls\n`);
@@ -619,7 +777,7 @@ Return ONLY valid JSON in this exact format:
 
             // Craft prompt for a single design
             const designNumber = i + 1;
-            const prompt = this.buildDesignPrompt(title, summary, dimensions, designNumber, numberOfDesigns, false, chatMessage, fullContent);
+            const prompt = await this.buildDesignPrompt(title, summary, dimensions, designNumber, numberOfDesigns, false, chatMessage, fullContent, model, modelInfo, cancellationToken, dynamicBestPractices);
 
             console.log(`=== DESIGN GENERATION PROMPT (${designNumber}/${numberOfDesigns}) ===`);
             console.log(prompt);
@@ -627,7 +785,13 @@ Return ONLY valid JSON in this exact format:
 
             // Send prompt immediately (before API call)
             if (debugCallback) {
-                debugCallback(`\n--- Request ${designNumber}/${numberOfDesigns} ---\n${prompt}\n`);
+                // Clip the prompt if it contains full blog content
+                let displayPrompt = prompt;
+                if (fullContent && prompt.includes(fullContent)) {
+                    displayPrompt = prompt.replace(fullContent, this.clipForDisplay(fullContent, 400));
+                }
+
+                debugCallback(`\n--- Request ${designNumber}/${numberOfDesigns} ---\n${displayPrompt}\n`);
 
                 // Show user guidance if provided via chat
                 if (chatMessage) {
@@ -765,7 +929,7 @@ Return ONLY valid JSON in this exact format:
             model = models[0];
         }
 
-        // Determine if we should use separate requests
+        // Get configuration once for all checks
         const config = vscode.workspace.getConfiguration('socialCardGenerator');
         const useSeparateForPremium = config.get<boolean>('useSeparateRequestsForPremiumModels', false);
 
@@ -797,8 +961,45 @@ Return ONLY valid JSON in this exact format:
 
         // Fall back to batched request (original behavior)
 
+        // Check if we should generate dynamic best practices
+        const bestPracticesMode = config.get<string>('bestPracticesMode', 'default');
+        let dynamicBestPractices: string | undefined;
+
+        console.log(`Best Practices Mode (batch): ${bestPracticesMode}`);
+
+        if (bestPracticesMode === 'dynamic') {
+            console.log('Generating dynamic best practices...');
+            if (debugCallback) {
+                debugCallback(`\n=== Generating Dynamic Best Practices ===\n`);
+            }
+            try {
+                dynamicBestPractices = await this.generateBestPractices(
+                    title,
+                    summary,
+                    dimensions,
+                    model,
+                    modelInfo,
+                    cancellationToken,
+                    debugCallback
+                );
+                if (debugCallback) {
+                    if (dynamicBestPractices) {
+                        debugCallback(`\nBest practices generated successfully.\n`);
+                    } else {
+                        debugCallback(`\nBest practices generation returned empty, using default.\n`);
+                    }
+                }
+            } catch (err) {
+                console.error('Error generating best practices (batch):', err);
+                if (debugCallback) {
+                    debugCallback(`\nBest practices generation failed, using default.\n`);
+                }
+                dynamicBestPractices = undefined;
+            }
+        }
+
         // Craft prompt using the helper (batch mode)
-        const prompt = this.buildDesignPrompt(title, summary, dimensions, 1, numberOfDesigns, true, chatMessage, fullContent);
+        const prompt = await this.buildDesignPrompt(title, summary, dimensions, 1, numberOfDesigns, true, chatMessage, fullContent, model, modelInfo, cancellationToken, dynamicBestPractices);
 
         console.log('=== DESIGN GENERATION PROMPT ===');
         console.log(prompt);
@@ -808,7 +1009,14 @@ Return ONLY valid JSON in this exact format:
         if (debugCallback) {
             const modelName = modelInfo?.name || model?.name || model?.id || model?.family || 'Unknown model';
             debugCallback(`\n=== Step 2: Design Generation (Batch Mode) ===\nModel: ${modelName}\nGenerating ${numberOfDesigns} designs in one request\n`);
-            debugCallback(`\n--- Prompt ---\n${prompt}\n`);
+
+            // Clip the prompt if it contains full blog content
+            let displayPrompt = prompt;
+            if (fullContent && prompt.includes(fullContent)) {
+                displayPrompt = prompt.replace(fullContent, this.clipForDisplay(fullContent, 400));
+            }
+
+            debugCallback(`\n--- Prompt ---\n${displayPrompt}\n`);
 
             // Show user guidance if provided via chat
             if (chatMessage) {

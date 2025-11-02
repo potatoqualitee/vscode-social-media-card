@@ -10,16 +10,16 @@ export function getSettingsView(): string {
             </div>
 
             <div class="settings-section">
-                <h3>Design Generation</h3>
-                <div class="settings-option">
-                    <label for="num-designs">Number of Design Variations</label>
-                    <div class="description">How many design variations to generate (1-10)</div>
-                    <input type="number" id="num-designs" min="1" max="10" value="5">
-                </div>
-            </div>
-
-            <div class="settings-section">
                 <h3>Prompt Customization</h3>
+                <div class="settings-option">
+                    <label for="best-practices-mode">Best Practices Mode</label>
+                    <div class="description">Choose how best practices are determined for design generation</div>
+                    <select id="best-practices-mode" class="best-practices-mode-select">
+                        <option value="dynamic">Dynamic - Generate fresh best practices (Recommended)</option>
+                        <option value="default">Default - Use built-in best practices (Faster)</option>
+                    </select>
+                    <div class="hint-text" style="margin-top: 8px;"><strong>Dynamic</strong> creates custom guidelines for your specific content, leading to more varied designs. <strong>Default</strong> is faster and uses fewer tokens.</div>
+                </div>
                 <div class="settings-option">
                     <label for="prompt-mode">Prompt Mode</label>
                     <div class="description">Choose how to customize the AI design prompt</div>

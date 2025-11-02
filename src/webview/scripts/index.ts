@@ -820,6 +820,15 @@ export function getMainScript(): string {
             });
         });
 
+        document.getElementById('best-practices-mode').addEventListener('change', function() {
+            const value = this.value;
+            vscode.postMessage({
+                type: 'update-setting',
+                key: 'bestPracticesMode',
+                value: value
+            });
+        });
+
         document.getElementById('prompt-mode').addEventListener('change', function() {
             const value = this.value;
             vscode.postMessage({
@@ -1067,6 +1076,7 @@ export function getMainScript(): string {
                     document.getElementById('num-designs').value = message.settings.numberOfDesigns;
                     document.getElementById('separate-requests').checked = message.settings.useSeparateRequestsForPremiumModels;
                     document.getElementById('skip-summary').checked = message.settings.skipSummaryStep || false;
+                    document.getElementById('best-practices-mode').value = message.settings.bestPracticesMode || 'default';
                     document.getElementById('prompt-mode').value = message.settings.promptMode || 'default';
                     document.getElementById('custom-instructions').value = message.settings.customPromptInstructions || '';
                     document.getElementById('loading-animation').value = message.settings.loadingAnimation || 'progress-bar';

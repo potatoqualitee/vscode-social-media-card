@@ -58,6 +58,7 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
         const config = vscode.workspace.getConfiguration('socialCardGenerator');
         const numberOfDesigns = config.get<number>('numberOfDesigns', 5);
         const useSeparateRequests = config.get<boolean>('useSeparateRequestsForPremiumModels', false);
+        const bestPracticesMode = config.get<string>('bestPracticesMode', 'default');
         const promptMode = config.get<string>('promptMode', 'default');
         const customPromptInstructions = config.get<string>('customPromptInstructions', '');
         const loadingAnimation = config.get<string>('loadingAnimation', 'progress-bar');
@@ -68,6 +69,7 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
             settings: {
                 numberOfDesigns,
                 useSeparateRequestsForPremiumModels: useSeparateRequests,
+                bestPracticesMode,
                 promptMode,
                 customPromptInstructions,
                 loadingAnimation,

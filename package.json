@@ -72,6 +72,19 @@
           "editPresentation": "multilineText",
           "markdownDescription": "Your custom prompt instructions. **Append mode**: Add extra direction to the default prompt. **Custom mode**: Write your own prompt using template variables: `{{title}}`, `{{summary}}`, `{{width}}`, `{{height}}`, `{{designNumber}}`, `{{numberOfDesigns}}`. Technical requirements (JSON format, HTML/CSS) will be automatically included."
         },
+        "socialCardGenerator.bestPracticesMode": {
+          "type": "string",
+          "enum": [
+            "default",
+            "dynamic"
+          ],
+          "default": "dynamic",
+          "enumDescriptions": [
+            "Use built-in best practices (faster, uses fewer tokens, more consistent)",
+            "Generate fresh best practices for each blog post (more varied, context-aware designs)"
+          ],
+          "markdownDescription": "Choose how best practices are determined. **Default**: Uses comprehensive built-in guidelines - faster and uses fewer tokens. **Dynamic** (Recommended): Asks the AI to create custom best practices for your specific content, leading to more varied and context-aware designs."
+        },
         "socialCardGenerator.loadingAnimation": {
           "type": "string",
           "enum": [

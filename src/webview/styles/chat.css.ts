@@ -30,23 +30,72 @@ export function getStyles(): string {
         .chat-header {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+
+        .chat-header-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .chat-header label {
             font-size: 12px;
             color: var(--vscode-descriptionForeground);
+            white-space: nowrap;
         }
 
         .agent-selector {
+            min-width: 180px;
             padding: 4px 8px;
-            background-color: var(--vscode-dropdown-background);
-            color: var(--vscode-dropdown-foreground);
-            border: 1px solid var(--vscode-dropdown-border);
-            border-radius: 4px;
+            background-color: var(--vscode-settings-dropdownBackground, var(--vscode-dropdown-background));
+            color: var(--vscode-settings-dropdownForeground, var(--vscode-dropdown-foreground));
+            border: 1px solid var(--vscode-settings-dropdownBorder, var(--vscode-dropdown-border));
+            border-radius: 2px;
             font-size: 12px;
             cursor: pointer;
+        }
+
+        .agent-selector:hover {
+            background-color: var(--vscode-settings-dropdownBackground, var(--vscode-dropdown-background));
+            border-color: var(--vscode-settings-dropdownBorder, var(--vscode-dropdown-border));
+        }
+
+        .agent-selector:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            outline-offset: -1px;
+            border-color: var(--vscode-focusBorder);
+        }
+
+        .num-designs-input {
+            width: 50px;
+            padding: 3px 6px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 2px;
+            font-size: 12px;
+            text-align: center;
+            -moz-appearance: textfield;
+        }
+
+        .num-designs-input:hover {
+            border-color: var(--vscode-inputOption-hoverBackground);
+        }
+
+        .num-designs-input:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            outline-offset: -1px;
+            border-color: var(--vscode-focusBorder);
+        }
+
+        /* Hide the ugly default spinner buttons */
+        .num-designs-input::-webkit-inner-spin-button,
+        .num-designs-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
 
         .chat-input-wrapper {
