@@ -61,6 +61,7 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
         const promptMode = config.get<string>('promptMode', 'default');
         const customPromptInstructions = config.get<string>('customPromptInstructions', '');
         const loadingAnimation = config.get<string>('loadingAnimation', 'progress-bar');
+        const skipSummaryStep = config.get<boolean>('skipSummaryStep', false);
 
         this._view.webview.postMessage({
             type: 'current-settings',
@@ -69,7 +70,8 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 useSeparateRequestsForPremiumModels: useSeparateRequests,
                 promptMode,
                 customPromptInstructions,
-                loadingAnimation
+                loadingAnimation,
+                skipSummaryStep
             }
         });
     }
@@ -344,12 +346,32 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 return;
             }
 
-            // Check if we have a cached summary for this file
+            // Check if skipSummaryStep setting is enabled
+            const config = vscode.workspace.getConfiguration('socialCardGenerator');
+            const skipSummaryStep = config.get<boolean>('skipSummaryStep', false);
+
+            // Variables for title, summary, and full content
             let title: string;
             let summary: string;
             let modelName: string;
+            let fullContent: string | undefined;
 
-            if (this.cachedSummary && this.cachedSummary.sourceFile === currentFile) {
+            if (skipSummaryStep) {
+                // Skip summarization - use full blog content directly
+                fullContent = blogContent;
+                // Extract a basic title from the first line or use a default
+                const firstLine = blogContent.split('\n')[0].trim();
+                title = firstLine.length > 0 && firstLine.length < 100
+                    ? firstLine.replace(/^#+\s*/, '') // Remove markdown heading markers
+                    : 'Blog Post';
+                summary = ''; // Not used when fullContent is provided
+                modelName = 'N/A (skip summary)';
+
+                this._view?.webview.postMessage({
+                    type: 'generating',
+                    status: 'Generating designs...'
+                });
+            } else if (this.cachedSummary && this.cachedSummary.sourceFile === currentFile) {
                 // Use cached summary (skip summarization step entirely)
                 title = this.cachedSummary.title;
                 summary = this.cachedSummary.summary;
@@ -396,20 +418,28 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 };
             }
 
-            // Step 2: Generate designs with the summary
-            this._view?.webview.postMessage({
-                type: 'generating',
-                status: 'Step 2/2: Generating designs...'
-            });
+            // Step 2: Generate designs with the summary (or full content if skipping summary)
+            // Get the number of designs to generate
+            const designCount = numDesigns || config.get<number>('numberOfDesigns', 5);
+
+            // Only show "Step 2/2" if we didn't skip the summary step
+            if (!skipSummaryStep) {
+                this._view?.webview.postMessage({
+                    type: 'generating',
+                    status: 'Step 2/2: Generating designs...',
+                    totalDesigns: designCount
+                });
+            }
 
             // Initialize designs array that will accumulate results
             const accumulatedDesigns: CardDesign[] = [];
 
             // Progress callback for separate design generation
             const progressCallback = (current: number, total: number) => {
+                const statusPrefix = skipSummaryStep ? '' : 'Step 2/2: ';
                 this._view?.webview.postMessage({
                     type: 'generating',
-                    status: `Step 2/2: Generating design ${current} of ${total}...`
+                    status: `${statusPrefix}Generating design ${current} of ${total}...`
                 });
             };
 
@@ -442,7 +472,8 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 debugCallback,
                 cancellationToken,
                 chatMessage, // pass chat message for append mode
-                this.modelManager.getSelectedModelInfo() // pass model info for CLI providers
+                this.modelManager.getSelectedModelInfo(), // pass model info for CLI providers
+                fullContent // pass full blog content if skipSummaryStep is enabled
             );
 
             // Store designs, dimensions, and source file for future modifications

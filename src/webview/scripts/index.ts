@@ -22,6 +22,8 @@ export function getMainScript(): string {
         let availableModels = [];
         let currentStreamingMessage = null;
         let isGenerating = false;
+        let totalDesignsExpected = 0;
+        let completedDesignsCount = 0;
 
         // ===== UTILITY FUNCTIONS =====
         function escapeHtml(text) {
@@ -132,10 +134,23 @@ export function getMainScript(): string {
                     <div class="loading-container">
                         <div class="progress-bar-container">
                             <div class="progress-bar-title">Generating designs</div>
-                            <div class="progress-bar-wrapper">
-                                <div class="progress-bar-fill" id="progress-fill"></div>
+
+                            <div class="progress-bar-section">
+                                <div class="progress-bar-label">Overall Progress</div>
+                                <div class="progress-bar-wrapper">
+                                    <div class="progress-bar-fill" id="progress-fill-overall"></div>
+                                </div>
+                                <div class="progress-bar-count" id="progress-count">0 of 0 designs</div>
                             </div>
-                            <div class="progress-bar-time" id="progress-time">This usually takes a minute or two..</div>
+
+                            <div class="progress-bar-section" style="margin-top: 20px;">
+                                <div class="progress-bar-label">Current Design</div>
+                                <div class="progress-bar-wrapper">
+                                    <div class="progress-bar-fill" id="progress-fill"></div>
+                                </div>
+                                <div class="progress-bar-time" id="progress-time">This usually takes a minute or two..</div>
+                            </div>
+
                             <div class="progress-bar-overtime" id="overtime-message" style="display: none;"></div>
                         </div>
                     </div>
@@ -191,6 +206,9 @@ export function getMainScript(): string {
                 progressInterval = null;
             }
             progressStartTime = null;
+            // Reset progress tracking
+            totalDesignsExpected = 0;
+            completedDesignsCount = 0;
         }
 
         function addDebugLine(message) {
@@ -784,6 +802,14 @@ export function getMainScript(): string {
             });
         });
 
+        document.getElementById('skip-summary').addEventListener('change', function() {
+            vscode.postMessage({
+                type: 'update-setting',
+                key: 'skipSummaryStep',
+                value: this.checked
+            });
+        });
+
         document.getElementById('loading-animation').addEventListener('change', function() {
             const value = this.value;
             loadingAnimationType = value;
@@ -878,6 +904,46 @@ export function getMainScript(): string {
                                 titleEl.textContent = progressTitle;
                             }
                         }
+
+                        // Initialize overall progress with total designs count if provided
+                        if (message.totalDesigns !== undefined) {
+                            totalDesignsExpected = message.totalDesigns;
+                            completedDesignsCount = 0;
+                            const countEl = document.getElementById('progress-count');
+                            const overallFillEl = document.getElementById('progress-fill-overall');
+                            if (countEl) {
+                                countEl.textContent = \`0 of \${totalDesignsExpected} designs complete\`;
+                            }
+                            if (overallFillEl) {
+                                overallFillEl.style.width = '0%';
+                            }
+                        }
+
+                        // Parse the status message to extract current design progress
+                        // Expected format: "Step 2/2: Generating design 3 of 5..."
+                        const designMatch = message.status.match(/design (\d+) of (\d+)/i);
+                        if (designMatch) {
+                            const currentDesign = parseInt(designMatch[1], 10);
+                            const totalDesigns = parseInt(designMatch[2], 10);
+
+                            // Update totalDesignsExpected if not set
+                            if (totalDesignsExpected === 0) {
+                                totalDesignsExpected = totalDesigns;
+                            }
+
+                            // Update overall progress bar (showing completed designs)
+                            const overallFillEl = document.getElementById('progress-fill-overall');
+                            const countEl = document.getElementById('progress-count');
+
+                            if (overallFillEl && countEl && totalDesignsExpected > 0) {
+                                const overallPercentage = (completedDesignsCount / totalDesignsExpected) * 100;
+                                overallFillEl.style.width = overallPercentage + '%';
+                                countEl.textContent = \`\${completedDesignsCount} of \${totalDesignsExpected} designs complete\`;
+                            }
+
+                            // Reset current design progress bar when starting a new design
+                            progressStartTime = Date.now();
+                        }
                     } else {
                         progressBar.classList.remove('hidden');
                         progressBar.classList.remove('active');
@@ -903,7 +969,22 @@ export function getMainScript(): string {
                     if (!isGenerating) {
                         break;
                     }
-                    hideLoadingAnimation();
+
+                    // Update the overall progress bar when a design is completed
+                    if (loadingAnimationType === 'progress-bar' && message.designs) {
+                        // Update completed count based on how many designs we've received
+                        completedDesignsCount = message.designs.length;
+
+                        const overallFillEl = document.getElementById('progress-fill-overall');
+                        const countEl = document.getElementById('progress-count');
+
+                        if (overallFillEl && countEl && totalDesignsExpected > 0) {
+                            const overallPercentage = (completedDesignsCount / totalDesignsExpected) * 100;
+                            overallFillEl.style.width = overallPercentage + '%';
+                            countEl.textContent = \`\${completedDesignsCount} of \${totalDesignsExpected} designs complete\`;
+                        }
+                    }
+
                     displayDesigns(message.designs);
                     break;
                 case 'designs':
@@ -985,6 +1066,7 @@ export function getMainScript(): string {
                 case 'current-settings':
                     document.getElementById('num-designs').value = message.settings.numberOfDesigns;
                     document.getElementById('separate-requests').checked = message.settings.useSeparateRequestsForPremiumModels;
+                    document.getElementById('skip-summary').checked = message.settings.skipSummaryStep || false;
                     document.getElementById('prompt-mode').value = message.settings.promptMode || 'default';
                     document.getElementById('custom-instructions').value = message.settings.customPromptInstructions || '';
                     document.getElementById('loading-animation').value = message.settings.loadingAnimation || 'progress-bar';

@@ -240,7 +240,8 @@ export class CardGenerator {
         designNumber: number,
         numberOfDesigns: number,
         isBatchMode: boolean = false,
-        chatMessage?: string
+        chatMessage?: string,
+        fullContent?: string
     ): string {
         const config = vscode.workspace.getConfiguration('socialCardGenerator');
         // If chatMessage is provided, treat it as append mode (override user's setting)
@@ -299,11 +300,14 @@ The HTML should be self-contained with all CSS inline or in <style> tags. Use th
             ? `IMPORTANT: You MUST create EXACTLY ${numberOfDesigns} different designs. Do not create more or fewer.`
             : `IMPORTANT: Create ONE unique design. Make it distinctly different from typical social media cards. Be creative with the layout, color scheme, and visual approach.`;
 
+        // Use full content if provided (skip summary mode), otherwise use summary
+        const contentSection = fullContent
+            ? `Full blog post content:\n${fullContent}`
+            : `Blog post title: ${title}\n\nBlog post summary: ${summary}`;
+
         const defaultPromptContent = `${designInstruction}
 
-Blog post title: ${title}
-
-Blog post summary: ${summary}
+${contentSection}
 
 Card dimensions: ${dimensions.width}x${dimensions.height}px
 
@@ -592,7 +596,8 @@ Return ONLY valid JSON in this exact format:
         debugCallback?: (message: string) => void,
         cancellationToken?: vscode.CancellationToken,
         chatMessage?: string,
-        modelInfo?: ModelInfo
+        modelInfo?: ModelInfo,
+        fullContent?: string
     ): Promise<CardDesign[]> {
         const designs: CardDesign[] = [];
 
@@ -614,7 +619,7 @@ Return ONLY valid JSON in this exact format:
 
             // Craft prompt for a single design
             const designNumber = i + 1;
-            const prompt = this.buildDesignPrompt(title, summary, dimensions, designNumber, numberOfDesigns, false, chatMessage);
+            const prompt = this.buildDesignPrompt(title, summary, dimensions, designNumber, numberOfDesigns, false, chatMessage, fullContent);
 
             console.log(`=== DESIGN GENERATION PROMPT (${designNumber}/${numberOfDesigns}) ===`);
             console.log(prompt);
@@ -733,7 +738,8 @@ Return ONLY valid JSON in this exact format:
         debugCallback?: (message: string) => void,
         cancellationToken?: vscode.CancellationToken,
         chatMessage?: string,
-        modelInfo?: ModelInfo
+        modelInfo?: ModelInfo,
+        fullContent?: string
     ): Promise<CardDesign[]> {
         // Get configured number of designs if not provided
         if (!numberOfDesigns) {
@@ -784,14 +790,15 @@ Return ONLY valid JSON in this exact format:
                 debugCallback,
                 cancellationToken,
                 chatMessage,
-                modelInfo
+                modelInfo,
+                fullContent
             );
         }
 
         // Fall back to batched request (original behavior)
 
         // Craft prompt using the helper (batch mode)
-        const prompt = this.buildDesignPrompt(title, summary, dimensions, 1, numberOfDesigns, true, chatMessage);
+        const prompt = this.buildDesignPrompt(title, summary, dimensions, 1, numberOfDesigns, true, chatMessage, fullContent);
 
         console.log('=== DESIGN GENERATION PROMPT ===');
         console.log(prompt);

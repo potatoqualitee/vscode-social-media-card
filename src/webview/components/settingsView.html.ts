@@ -42,6 +42,14 @@ export function getSettingsView(): string {
             <div class="settings-section">
                 <h3>Advanced</h3>
                 <div class="settings-option">
+                    <label for="skip-summary">Skip Summary Step</label>
+                    <div class="description">Skip the summarization step and send the full blog post content directly to the design prompt. This combines both steps into one API call.</div>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="skip-summary">
+                        <span style="font-size: 12px;">Send full content in one prompt (uses more tokens)</span>
+                    </div>
+                </div>
+                <div class="settings-option">
                     <label for="separate-requests">Premium Model Quality</label>
                     <div class="description">When using premium models (non-OpenAI), generate designs with separate API calls for better quality (slower but higher quality)</div>
                     <div class="checkbox-wrapper">

@@ -112,6 +112,11 @@
           "default": false,
           "markdownDescription": "Always use a Copilot GPT mini model for blog post summarization (Step 1), even when using CLI or OpenAI-Compatible API models. This can save costs but requires GitHub Copilot to be active."
         },
+        "socialCardGenerator.skipSummaryStep": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Skip the summarization step and send the full blog post content directly to the design generation prompt. This combines both steps into one API call, which may work better with some models but will use more tokens."
+        },
         "socialCardGenerator.openaiCompatible.baseUrl": {
           "type": "string",
           "default": "",

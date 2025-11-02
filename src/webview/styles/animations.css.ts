@@ -64,6 +64,18 @@ export function getStyles(): string {
             margin-bottom: 20px;
         }
 
+        .progress-bar-section {
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--vscode-foreground);
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
         .progress-bar-wrapper {
             background-color: var(--vscode-input-background);
             border: 1px solid var(--vscode-panel-border);
@@ -72,6 +84,12 @@ export function getStyles(): string {
             overflow: hidden;
             position: relative;
             margin-bottom: 12px;
+        }
+
+        .progress-bar-count {
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 4px;
         }
 
         .progress-bar-fill {
