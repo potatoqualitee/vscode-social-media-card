@@ -140,7 +140,7 @@ export function getMainScript(): string {
                                 <div class="progress-bar-wrapper">
                                     <div class="progress-bar-fill" id="progress-fill-overall"></div>
                                 </div>
-                                <div class="progress-bar-count" id="progress-count">0 of 0 designs</div>
+                                <div class="progress-bar-count" id="progress-count">0/0</div>
                             </div>
 
                             <div class="progress-bar-section" style="margin-top: 20px;">
@@ -891,13 +891,11 @@ export function getMainScript(): string {
                         previewArea.innerHTML = \`<div class="debug-console" id="debug-console-content"></div>\`;
                     }
 
-                    // Show progress bar/animation for BOTH steps (summarization and design generation)
+                    // Show progress bar/animation for design generation
                     if (loadingAnimationType === 'progress-bar') {
-                        // Determine title based on step or action
+                        // Determine title based on action
                         let progressTitle;
-                        if (message.status.includes('Step 1/2')) {
-                            progressTitle = 'Summarizing blog post';
-                        } else if (message.status.includes('Modifying')) {
+                        if (message.status.includes('Modifying')) {
                             progressTitle = 'Redesigning';
                         } else {
                             progressTitle = 'Generating designs';
@@ -921,7 +919,7 @@ export function getMainScript(): string {
                             const countEl = document.getElementById('progress-count');
                             const overallFillEl = document.getElementById('progress-fill-overall');
                             if (countEl) {
-                                countEl.textContent = \`0 of \${totalDesignsExpected} designs complete\`;
+                                countEl.textContent = \`0/\${totalDesignsExpected}\`;
                             }
                             if (overallFillEl) {
                                 overallFillEl.style.width = '0%';
@@ -929,7 +927,7 @@ export function getMainScript(): string {
                         }
 
                         // Parse the status message to extract current design progress
-                        // Expected format: "Step 2/2: Generating design 3 of 5..."
+                        // Expected format: "Generating design 3 of 5..."
                         const designMatch = message.status.match(/design (\d+) of (\d+)/i);
                         if (designMatch) {
                             const currentDesign = parseInt(designMatch[1], 10);
@@ -940,14 +938,15 @@ export function getMainScript(): string {
                                 totalDesignsExpected = totalDesigns;
                             }
 
-                            // Update overall progress bar (showing completed designs)
+                            // Update overall progress bar (showing current design being generated)
                             const overallFillEl = document.getElementById('progress-fill-overall');
                             const countEl = document.getElementById('progress-count');
 
                             if (overallFillEl && countEl && totalDesignsExpected > 0) {
-                                const overallPercentage = (completedDesignsCount / totalDesignsExpected) * 100;
+                                // Show which design we're currently generating (1/5, 2/5, etc)
+                                const overallPercentage = (currentDesign / totalDesignsExpected) * 100;
                                 overallFillEl.style.width = overallPercentage + '%';
-                                countEl.textContent = \`\${completedDesignsCount} of \${totalDesignsExpected} designs complete\`;
+                                countEl.textContent = \`\${currentDesign}/\${totalDesignsExpected}\`;
                             }
 
                             // Reset current design progress bar when starting a new design
@@ -979,21 +978,7 @@ export function getMainScript(): string {
                         break;
                     }
 
-                    // Update the overall progress bar when a design is completed
-                    if (loadingAnimationType === 'progress-bar' && message.designs) {
-                        // Update completed count based on how many designs we've received
-                        completedDesignsCount = message.designs.length;
-
-                        const overallFillEl = document.getElementById('progress-fill-overall');
-                        const countEl = document.getElementById('progress-count');
-
-                        if (overallFillEl && countEl && totalDesignsExpected > 0) {
-                            const overallPercentage = (completedDesignsCount / totalDesignsExpected) * 100;
-                            overallFillEl.style.width = overallPercentage + '%';
-                            countEl.textContent = \`\${completedDesignsCount} of \${totalDesignsExpected} designs complete\`;
-                        }
-                    }
-
+                    // Just display the designs - progress bar is updated by 'generating' status messages
                     displayDesigns(message.designs);
                     break;
                 case 'designs':
@@ -1024,6 +1009,9 @@ export function getMainScript(): string {
                     isGenerating = false;
                     stopLoadingMessages();
                     hideLoadingAnimation();
+
+                    // Clear the preview area to remove progress bars
+                    document.getElementById('preview-area').innerHTML = '';
 
                     // Hide the thin progress bar
                     document.getElementById('generation-progress-bar').classList.add('hidden');

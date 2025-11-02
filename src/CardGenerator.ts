@@ -624,7 +624,7 @@ Return ONLY valid JSON in this exact format:
   "suggestedFilename": "descriptive-filename-without-extension"
 }`;
 
-            debugCallback(`\n=== Step 1: Summarization ===\nModel: ${modelName}\n\n--- Prompt ---\n${displayPrompt}\n\n--- Response ---\n`);
+            debugCallback(`\n=== Summarization ===\nModel: ${modelName}\n\n--- Prompt ---\n${displayPrompt}\n\n--- Response ---\n`);
         }
 
         try {
@@ -763,7 +763,7 @@ Return ONLY valid JSON in this exact format:
 
         if (debugCallback) {
             const modelName = modelInfo?.name || model?.name || model?.id || model?.family || 'Unknown model';
-            debugCallback(`\n=== Step 2: Design Generation (Separate Requests) ===\nModel: ${modelName}\nGenerating ${numberOfDesigns} designs with separate API calls\n`);
+            debugCallback(`\n=== Design Generation (Separate Requests) ===\nModel: ${modelName}\nGenerating ${numberOfDesigns} designs with separate API calls\n`);
         }
 
         for (let i = 0; i < numberOfDesigns; i++) {
@@ -1008,7 +1008,7 @@ Return ONLY valid JSON in this exact format:
         // Send prompt immediately (before API call)
         if (debugCallback) {
             const modelName = modelInfo?.name || model?.name || model?.id || model?.family || 'Unknown model';
-            debugCallback(`\n=== Step 2: Design Generation (Batch Mode) ===\nModel: ${modelName}\nGenerating ${numberOfDesigns} designs in one request\n`);
+            debugCallback(`\n=== Design Generation (Batch Mode) ===\nModel: ${modelName}\nGenerating ${numberOfDesigns} designs in one request\n`);
 
             // Clip the prompt if it contains full blog content
             let displayPrompt = prompt;

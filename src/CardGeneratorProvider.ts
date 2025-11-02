@@ -368,33 +368,19 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                     : 'Blog Post';
                 summary = ''; // Not used when fullContent is provided
                 modelName = 'N/A (skip summary)';
-
-                this._view?.webview.postMessage({
-                    type: 'generating',
-                    status: 'Generating designs...'
-                });
             } else if (this.cachedSummary && this.cachedSummary.sourceFile === currentFile) {
                 // Use cached summary (skip summarization step entirely)
                 title = this.cachedSummary.title;
                 summary = this.cachedSummary.summary;
                 modelName = this.cachedSummary.modelName;
             } else {
-                // Step 1: Summarize blog post with GPT-4o mini
-                this._view?.webview.postMessage({
-                    type: 'generating',
-                    status: 'Step 1/2: Summarizing blog post...'
-                });
-
+                // Summarize blog post (don't send progress update - not tracked)
                 const summaryResult = await this.cardGenerator.summarizeBlogPost(
                     blogContent,
                     this.modelManager.getSelectedModel(),
                     this.modelManager.getSelectedModelInfo(),
                     (modelName) => {
-                        // Update status with actual model being used
-                        this._view?.webview.postMessage({
-                            type: 'generating',
-                            status: `Step 1/2: Summarizing blog post...`
-                        });
+                        // Model selected callback (no UI update needed)
                     },
                     (debugMessage) => {
                         // Send debug messages to webview
@@ -420,28 +406,24 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 };
             }
 
-            // Step 2: Generate designs with the summary (or full content if skipping summary)
             // Get the number of designs to generate
             const designCount = numDesigns || config.get<number>('numberOfDesigns', 5);
 
-            // Only show "Step 2/2" if we didn't skip the summary step
-            if (!skipSummaryStep) {
-                this._view?.webview.postMessage({
-                    type: 'generating',
-                    status: 'Step 2/2: Generating designs...',
-                    totalDesigns: designCount
-                });
-            }
+            // Send initial progress update with total designs count
+            this._view?.webview.postMessage({
+                type: 'generating',
+                status: 'Generating designs...',
+                totalDesigns: designCount
+            });
 
             // Initialize designs array that will accumulate results
             const accumulatedDesigns: CardDesign[] = [];
 
             // Progress callback for separate design generation
             const progressCallback = (current: number, total: number) => {
-                const statusPrefix = skipSummaryStep ? '' : 'Step 2/2: ';
                 this._view?.webview.postMessage({
                     type: 'generating',
-                    status: `${statusPrefix}Generating design ${current} of ${total}...`
+                    status: `Generating design ${current} of ${total}...`
                 });
             };
 
