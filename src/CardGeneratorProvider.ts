@@ -10,9 +10,8 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
     private screenshotService: ScreenshotService;
     private modelManager: ModelManager;
     private conversationHistory: vscode.LanguageModelChatMessage[] = [];
-    private currentDesigns: CardDesign[] = [];
-    private currentDimensions: { width: number; height: number } = { width: 1200, height: 630 };
-    private currentSourceFile?: string; // Track which file the designs were generated from
+    // Store designs per file so switching tabs preserves designs for each file
+    private designCache = new Map<string, { designs: CardDesign[], dimensions: { width: number; height: number } }>();
     private currentCancellation?: vscode.CancellationTokenSource; // Track current generation cancellation
     private cachedSummary?: { title: string; summary: string; modelName: string; sourceFile: string; suggestedFilename?: string }; // Cached summary for the current file
     private cachedBlogContent?: string; // Cached blog content to support regeneration when no active editor
@@ -281,26 +280,66 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
         this.sendCurrentSettings();
     }
 
+    // Helper methods for per-file design caching
+    private getDesignsForCurrentFile(): { designs: CardDesign[], dimensions: { width: number; height: number } } | undefined {
+        const currentFile = vscode.window.activeTextEditor?.document.uri.toString();
+        if (!currentFile) {
+            return undefined;
+        }
+        return this.designCache.get(currentFile);
+    }
+
+    private setDesignsForFile(fileUri: string, designs: CardDesign[], dimensions: { width: number; height: number }) {
+        this.designCache.set(fileUri, { designs, dimensions });
+    }
+
+    private hasDesignsForFile(fileUri: string): boolean {
+        const cached = this.designCache.get(fileUri);
+        return cached !== undefined && cached.designs.length > 0;
+    }
+
     private updateButtonState() {
         const hasValidEditor = !!vscode.window.activeTextEditor;
         const currentFile = vscode.window.activeTextEditor?.document.uri.toString();
 
-        // We have designs if currentDesigns is populated
-        const hasDesigns = this.currentDesigns.length > 0;
+        // Check if the CURRENT file has designs cached (not just any file)
+        const hasDesigns = currentFile ? this.hasDesignsForFile(currentFile) : false;
 
-        // If we have designs cached, we can always regenerate regardless of active editor
+        // If we have designs for the current file, we can regenerate regardless of active editor
         // This allows the button to stay as "Regenerate" even when preview panel is open
         const shouldEnable = hasValidEditor || hasDesigns;
 
-        // Only clear cached summary and content if we're actually switching to a DIFFERENT file
-        // (not just losing focus because a preview panel opened)
-        if (this.cachedSummary &&
+        // If we're switching to a DIFFERENT file, update the cached summary and displayed designs
+        const isSwitchingFiles = this.cachedSummary &&
             currentFile &&
-            this.cachedSummary.sourceFile !== currentFile) {
+            this.cachedSummary.sourceFile !== currentFile;
+
+        if (isSwitchingFiles) {
             this.cachedSummary = undefined;
             this.cachedBlogContent = undefined;
+
+            // Load and display designs for the new file (or clear if none exist)
+            // These messages will also update the button state, so don't send update-button-state separately
+            const cached = currentFile ? this.designCache.get(currentFile) : undefined;
+            if (cached) {
+                // Show cached designs for this file (will set button to "Regenerate")
+                this._view?.webview.postMessage({
+                    type: 'designs',
+                    designs: cached.designs,
+                    dimensions: cached.dimensions
+                });
+            } else {
+                // Clear designs display if new file has no cached designs (will set button to "Generate")
+                this._view?.webview.postMessage({
+                    type: 'clear-designs',
+                    hasValidEditor: hasValidEditor
+                });
+            }
+            // Don't send update-button-state when switching files to avoid button text blip
+            return;
         }
 
+        // Only send update-button-state if NOT switching files
         this._view?.webview.postMessage({
             type: 'update-button-state',
             enabled: shouldEnable,
@@ -335,10 +374,10 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
 
                 // Cache the content for future regenerations
                 this.cachedBlogContent = blogContent;
-            } else if (this.cachedBlogContent && this.currentSourceFile) {
+            } else if (this.cachedBlogContent && this.cachedSummary?.sourceFile) {
                 // No active editor, but we have cached content (e.g., regenerating from Card Preview tab)
                 blogContent = this.cachedBlogContent;
-                currentFile = this.currentSourceFile;
+                currentFile = this.cachedSummary.sourceFile;
             } else {
                 vscode.window.showErrorMessage('Please open a blog post file first.');
                 this._view?.webview.postMessage({
@@ -460,18 +499,27 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 fullContent // pass full blog content if skipSummaryStep is enabled
             );
 
-            // Store designs, dimensions, and source file for future modifications
-            this.currentDesigns = designs;
-            this.currentDimensions = dimensions;
-            this.currentSourceFile = currentFile;
+            // Store designs and dimensions for this file for future modifications
+            this.setDesignsForFile(currentFile, designs, dimensions);
 
-            // Send final designs to webview (in case callback wasn't used for batched mode)
-            this._view?.webview.postMessage({
-                type: 'designs',
-                designs: designs
-            });
+            // Only send designs to webview if user is still on the same file
+            // If they switched tabs during generation, they'll see cached designs when they switch back
+            const activeFile = vscode.window.activeTextEditor?.document.uri.toString();
+            if (activeFile === currentFile) {
+                // Send final designs to webview (in case callback wasn't used for batched mode)
+                this._view?.webview.postMessage({
+                    type: 'designs',
+                    designs: designs
+                });
+            } else {
+                // User switched tabs during generation - just notify completion without showing designs
+                this._view?.webview.postMessage({
+                    type: 'generation-complete',
+                    success: true
+                });
+            }
 
-            // Update button state to show "Regenerate"
+            // Update button state (will reflect current active file, which may be different)
             this.updateButtonState();
         } catch (error) {
             // Handle cancellation separately
@@ -707,8 +755,16 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
         const cancellationToken = this.currentCancellation.token;
 
         try {
-            if (this.currentDesigns.length === 0) {
+            // Get cached designs for the current file
+            const cached = this.getDesignsForCurrentFile();
+            if (!cached || cached.designs.length === 0) {
                 vscode.window.showErrorMessage('No designs available to modify. Please generate designs first.');
+                return;
+            }
+
+            const currentFile = vscode.window.activeTextEditor?.document.uri.toString();
+            if (!currentFile) {
+                vscode.window.showErrorMessage('No active file found.');
                 return;
             }
 
@@ -728,23 +784,33 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
 
             // Call the card generator to modify designs
             const modifiedDesigns = await this.cardGenerator.modifyDesigns(
-                this.currentDesigns,
+                cached.designs,
                 modificationRequest,
-                this.currentDimensions,
+                cached.dimensions,
                 this.modelManager.getSelectedModel(),
                 cancellationToken,
                 debugCallback,
                 this.modelManager.getSelectedModelInfo() // pass model info for CLI providers
             );
 
-            // Update stored designs
-            this.currentDesigns = modifiedDesigns;
+            // Update stored designs for this file
+            this.setDesignsForFile(currentFile, modifiedDesigns, cached.dimensions);
 
-            // Send updated designs to webview (this will clear the generating status)
-            this._view?.webview.postMessage({
-                type: 'designs',
-                designs: modifiedDesigns
-            });
+            // Only send designs to webview if user is still on the same file
+            const activeFile = vscode.window.activeTextEditor?.document.uri.toString();
+            if (activeFile === currentFile) {
+                // Send updated designs to webview (this will clear the generating status)
+                this._view?.webview.postMessage({
+                    type: 'designs',
+                    designs: modifiedDesigns
+                });
+            } else {
+                // User switched tabs during modification - just notify completion without showing designs
+                this._view?.webview.postMessage({
+                    type: 'generation-complete',
+                    success: true
+                });
+            }
 
             // Clear the status message
             this._view?.webview.postMessage({

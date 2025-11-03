@@ -109,6 +109,13 @@ export function getMainScript(): string {
         // ===== GENERATION FUNCTIONS =====
         function updateGenerateButton(enabled, hasDesigns = false) {
             const btn = document.getElementById('generate-btn');
+
+            // Don't update button state if generation is currently in progress
+            // This prevents the button from "blipping" when switching tabs during generation
+            if (isGenerating) {
+                return;
+            }
+
             btn.disabled = !enabled;
             btn.classList.remove('loading');
 
@@ -1070,26 +1077,34 @@ export function getMainScript(): string {
                     }
                     break;
                 case 'designs':
-                    // Only process if we're still generating (not cancelled)
-                    if (!isGenerating) {
-                        break;
+                    // If we were generating, clean up the UI
+                    if (isGenerating) {
+                        isGenerating = false;
+                        stopLoadingMessages();
+                        hideLoadingAnimation();
+
+                        // Hide the thin progress bar
+                        document.getElementById('generation-progress-bar').classList.add('hidden');
+                        document.getElementById('generation-progress-bar').classList.remove('active');
+
+                        const designBtn = document.getElementById('generate-btn');
+                        designBtn.classList.remove('loading', 'stop-mode');
+                        clearStatus();
+
+                        // Re-enable the chat input (for modifications)
+                        sendChatBtn.disabled = chatInput.value.trim().length === 0;
                     }
-                    isGenerating = false;
-                    stopLoadingMessages();
-                    hideLoadingAnimation();
 
-                    // Hide the thin progress bar
-                    document.getElementById('generation-progress-bar').classList.add('hidden');
-                    document.getElementById('generation-progress-bar').classList.remove('active');
-
-                    const designBtn = document.getElementById('generate-btn');
-                    designBtn.classList.remove('loading', 'stop-mode');
+                    // Always display designs (whether from generation or loading cached designs)
                     updateGenerateButton(true, true);
-                    clearStatus();
                     displayDesigns(message.designs);
-
-                    // Re-enable the chat input (for modifications)
-                    sendChatBtn.disabled = chatInput.value.trim().length === 0;
+                    break;
+                case 'clear-designs':
+                    // Clear the preview area when switching to a file with no cached designs
+                    document.getElementById('preview-area').innerHTML = '';
+                    updateClearButtonState();
+                    // Update button to "Generate Designs" since there are no cached designs
+                    updateGenerateButton(message.hasValidEditor !== false, false);
                     break;
                 case 'error':
                     // Always clean up UI state on errors, even if generation was already stopped

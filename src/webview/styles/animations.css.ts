@@ -18,27 +18,8 @@ export function getStyles(): string {
             border: none;
         }
 
-        .status-message::before {
-            content: '';
-            display: inline-block;
-            width: 4px;
-            height: 4px;
-            background-color: var(--vscode-textLink-foreground);
-            border-radius: 50%;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 1; }
-        }
-
         .error-message {
             color: var(--vscode-errorForeground);
-        }
-
-        .error-message::before {
-            display: none;
         }
 
         #preview-area {
