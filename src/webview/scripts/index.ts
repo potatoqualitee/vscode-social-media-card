@@ -327,7 +327,19 @@ export function getMainScript(): string {
                 return;
             }
 
-            previewArea.innerHTML = '';
+            // Check if we're currently generating (progress bars are showing)
+            const isCurrentlyGenerating = document.getElementById('progress-fill') !== null;
+            let progressHtml = '';
+
+            if (isCurrentlyGenerating) {
+                // Preserve the progress bar HTML
+                const loadingContainer = previewArea.querySelector('.loading-container');
+                if (loadingContainer) {
+                    progressHtml = loadingContainer.outerHTML;
+                }
+            }
+
+            previewArea.innerHTML = progressHtml;
 
             designs.forEach((design, index) => {
                 const card = document.createElement('div');
@@ -1010,8 +1022,18 @@ export function getMainScript(): string {
                         break;
                     }
 
-                    // Just display the designs - progress bar is updated by 'generating' status messages
+                    // Display the designs (progress bars will be preserved)
                     displayDesigns(message.designs);
+
+                    // Update overall progress count based on how many designs have been generated
+                    const countEl = document.getElementById('progress-count');
+                    const overallFillEl = document.getElementById('progress-fill-overall');
+                    if (countEl && overallFillEl && totalDesignsExpected > 0) {
+                        const completedCount = message.designs.length;
+                        const overallPercentage = (completedCount / totalDesignsExpected) * 100;
+                        overallFillEl.style.width = overallPercentage + '%';
+                        countEl.textContent = \`\${completedCount}/\${totalDesignsExpected}\`;
+                    }
                     break;
                 case 'designs':
                     // Only process if we're still generating (not cancelled)
