@@ -253,7 +253,7 @@ export class CardGenerator {
         cancellationToken?: vscode.CancellationToken,
         debugCallback?: (message: string) => void
     ): Promise<string> {
-        const prompt = `You are an expert in social media card design and marketing. Generate best practices for creating an effective social media card for the following content:
+        const prompt = `This is an HTML and CSS code generation task. You are an expert in social media card design and marketing. Generate best practices for creating an effective social media card for the following content. These cards will be built using HTML/CSS code, not images.
 
 Title: ${title}
 Summary: ${summary}
@@ -276,7 +276,7 @@ Return your best practices as plain text (not JSON), focusing on creating variet
 
         // Send prompt to debug callback if available (with clipped summary for brevity)
         if (debugCallback) {
-            const displayPrompt = `You are an expert in social media card design and marketing. Generate best practices for creating an effective social media card for the following content:
+            const displayPrompt = `This is an HTML and CSS code generation task. You are an expert in social media card design and marketing. Generate best practices for creating an effective social media card for the following content. These cards will be built using HTML/CSS code, not images.
 
 Title: ${title}
 Summary: ${this.clipForDisplay(summary)}
@@ -383,12 +383,14 @@ CRITICAL JSON FORMATTING:
 - Do NOT use backticks (\`) in the HTML - they break JSON parsing
 - Use regular quotes for HTML attributes
 
-The HTML should be self-contained with all CSS inline or in <style> tags. Use the exact dimensions provided (${dimensions.width}x${dimensions.height}px). Ensure the HTML is valid and displays properly when rendered.`;
+The HTML should be self-contained with all CSS inline or in <style> tags. Use the exact dimensions provided (${dimensions.width}x${dimensions.height}px). Ensure the HTML is valid and displays properly when rendered.
+
+REMINDER: This is an HTML/CSS code generation task. Generate code, not images.`;
 
         // Default prompt content (varies based on batch mode)
         const designInstruction = isBatchMode
-            ? `You are a social media card designer. Create EXACTLY ${numberOfDesigns} design variations for a social media card based on this blog post.`
-            : `You are a social media card designer. Create a single unique design variation (design #${designNumber} of ${numberOfDesigns}) for a social media card based on this blog post.`;
+            ? `This is an HTML and CSS code generation task. You are a social media card designer. Create EXACTLY ${numberOfDesigns} design variations for a social media card based on this blog post. You will generate HTML/CSS code, not images.`
+            : `This is an HTML and CSS code generation task. You are a social media card designer. Create a single unique design variation (design #${designNumber} of ${numberOfDesigns}) for a social media card based on this blog post. You will generate HTML/CSS code, not images.`;
 
         const uniquenessInstruction = isBatchMode
             ? `IMPORTANT: You MUST create EXACTLY ${numberOfDesigns} different designs. Do not create more or fewer.`
@@ -877,6 +879,12 @@ Return ONLY valid JSON in this exact format:
                         throw new vscode.CancellationError();
                     }
 
+                    // Check for "model not supported" errors which may indicate temporary GitHub Copilot service issues
+                    if (errMsg.includes('model is not supported') || errMsg.includes('model_not_supported')) {
+                        console.error(`Language Model Error for design ${designNumber}:`, err);
+                        throw new Error(`Language Model Error for design ${designNumber}: ${err.message}\n\nNote: This error sometimes occurs during temporary GitHub Copilot service issues. If you encounter this error, try waiting an hour and trying again.`);
+                    }
+
                     console.error(`Language Model Error for design ${designNumber}:`, err);
                     throw new Error(`Language Model Error for design ${designNumber}: ${err.message}`);
                 }
@@ -1103,6 +1111,12 @@ Return ONLY valid JSON in this exact format:
                     throw new vscode.CancellationError();
                 }
 
+                // Check for "model not supported" errors which may indicate temporary GitHub Copilot service issues
+                if (errMsg.includes('model is not supported') || errMsg.includes('model_not_supported')) {
+                    console.error('Language Model Error:', err);
+                    throw new Error(`Language Model Error: ${err.message}\n\nNote: This error sometimes occurs during temporary GitHub Copilot service issues. If you encounter this error, try waiting an hour and trying again.`);
+                }
+
                 console.error('Language Model Error:', err);
                 throw new Error(`Language Model Error: ${err.message}`);
             }
@@ -1143,7 +1157,7 @@ Return ONLY valid JSON in this exact format:
         ).join('\n\n---\n\n');
 
         // Craft prompt for modification
-        const prompt = `You are a social media card designer. The user has requested modifications to existing designs.
+        const prompt = `This is an HTML and CSS code generation task. You are a social media card designer. The user has requested modifications to existing designs. You will generate HTML/CSS code, not images.
 
 Current designs:
 ${designsContext}
@@ -1310,6 +1324,12 @@ The HTML should be self-contained with all CSS inline or in <style> tags. Use th
                 if (errMsg.includes('cancel') || errMsg.includes('abort')) {
                     console.log('Design modification cancelled (detected from error message)');
                     throw new vscode.CancellationError();
+                }
+
+                // Check for "model not supported" errors which may indicate temporary GitHub Copilot service issues
+                if (errMsg.includes('model is not supported') || errMsg.includes('model_not_supported')) {
+                    console.error('Language Model Error:', err);
+                    throw new Error(`Language Model Error: ${err.message}\n\nNote: This error sometimes occurs during temporary GitHub Copilot service issues. If you encounter this error, try waiting an hour and trying again.`);
                 }
 
                 console.error('Language Model Error:', err);
