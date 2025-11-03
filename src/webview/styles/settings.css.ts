@@ -181,20 +181,28 @@ export function getStyles(): string {
 
         .slider-labels {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            padding: 0 2px;
+            position: relative;
+            height: 16px;
+            margin-bottom: 16px;
+            padding: 0;
         }
 
         .slider-label {
+            position: absolute;
             font-size: 11px;
             font-weight: 400;
             color: var(--vscode-descriptionForeground);
-            text-align: center;
+            transform: translateX(-50%);
             transition: all 0.2s ease;
             user-select: none;
             opacity: 0.6;
+            white-space: nowrap;
         }
+
+        .slider-label[data-level="0"] { left: 0%; transform: translateX(0); }
+        .slider-label[data-level="1"] { left: 33.33%; }
+        .slider-label[data-level="2"] { left: 66.66%; }
+        .slider-label[data-level="3"] { left: 100%; transform: translateX(-100%); }
 
         .slider-label.active {
             color: var(--vscode-foreground);
@@ -281,25 +289,29 @@ export function getStyles(): string {
             height: 2px;
         }
 
-        /* Subtle tick marks */
+        /* Subtle tick marks - positioned at slider snap points */
         .slider-ticks {
             position: absolute;
             top: 50%;
             left: 0;
             right: 0;
             transform: translateY(-50%);
-            display: flex;
-            justify-content: space-between;
-            padding: 0 calc(50% / 3);
             pointer-events: none;
         }
 
         .slider-ticks .tick {
+            position: absolute;
             width: 1px;
-            height: 8px;
+            height: 6px;
             background-color: var(--vscode-input-border);
-            opacity: 0.4;
+            opacity: 0.3;
+            transform: translateX(-0.5px);
         }
+
+        .slider-ticks .tick:nth-child(1) { left: 0%; }
+        .slider-ticks .tick:nth-child(2) { left: 33.33%; }
+        .slider-ticks .tick:nth-child(3) { left: 66.66%; }
+        .slider-ticks .tick:nth-child(4) { left: 100%; }
 
         /* Subtle progress indicator */
         .slider-track-wrapper::before {

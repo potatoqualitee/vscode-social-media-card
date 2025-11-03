@@ -27,6 +27,7 @@ export function getSettingsView(): string {
                                 <span class="tick"></span>
                                 <span class="tick"></span>
                                 <span class="tick"></span>
+                                <span class="tick"></span>
                             </div>
                         </div>
                     </div>

@@ -9,6 +9,7 @@ export interface ModelInfo {
     maxInputTokens: number;
     isCli?: boolean; // True if this is a CLI provider
     cliCommand?: string; // The CLI command to execute (e.g., 'claude', 'codex', 'gemini')
+    group?: string; // The group this model belongs to (for UI organization)
 }
 
 export class ModelManager {
@@ -82,7 +83,8 @@ export class ModelManager {
             version: model.version,
             name: this.getModelDisplayName(model),
             maxInputTokens: model.maxInputTokens,
-            isCli: false
+            isCli: false,
+            group: 'GitHub Copilot Models'
         }));
 
         // Add CLI providers at the end with a separator
@@ -94,7 +96,8 @@ export class ModelManager {
                 version: '',
                 name: '────────────────────',
                 maxInputTokens: 0,
-                isCli: false
+                isCli: false,
+                group: undefined // No group for separator
             },
             {
                 id: 'cli:cursor',
@@ -104,7 +107,8 @@ export class ModelManager {
                 name: 'Cursor',
                 maxInputTokens: 200000,
                 isCli: true,
-                cliCommand: 'cursor-agent'
+                cliCommand: 'cursor-agent',
+                group: 'CLI Providers'
             },
             {
                 id: 'cli:claude',
@@ -114,7 +118,8 @@ export class ModelManager {
                 name: 'Claude',
                 maxInputTokens: 200000,
                 isCli: true,
-                cliCommand: 'claude'
+                cliCommand: 'claude',
+                group: 'CLI Providers'
             },
             {
                 id: 'cli:codex',
@@ -124,7 +129,8 @@ export class ModelManager {
                 name: 'Codex',
                 maxInputTokens: 100000,
                 isCli: true,
-                cliCommand: 'codex exec'
+                cliCommand: 'codex exec',
+                group: 'CLI Providers'
             },
             {
                 id: 'cli:gemini',
@@ -134,7 +140,8 @@ export class ModelManager {
                 name: 'Gemini',
                 maxInputTokens: 1000000,
                 isCli: true,
-                cliCommand: 'gemini'
+                cliCommand: 'gemini',
+                group: 'CLI Providers'
             },
             {
                 id: 'cli:ollama',
@@ -144,7 +151,8 @@ export class ModelManager {
                 name: 'Ollama',
                 maxInputTokens: 128000,
                 isCli: true,
-                cliCommand: 'ollama run'
+                cliCommand: 'ollama run',
+                group: 'CLI Providers'
             },
             {
                 id: 'openai-compatible',
@@ -153,7 +161,8 @@ export class ModelManager {
                 version: '',
                 name: 'OpenAI-Compatible API',
                 maxInputTokens: 128000,
-                isCli: false
+                isCli: false,
+                group: 'CLI Providers'
             }
         ];
 

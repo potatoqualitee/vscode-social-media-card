@@ -750,7 +750,41 @@ export function getMainScript(): string {
 
             agentSelect.disabled = false;
 
+            // Group models by their group property
+            const groupedModels = {};
+            const ungroupedModels = [];
+
             models.forEach(model => {
+                if (model.group) {
+                    if (!groupedModels[model.group]) {
+                        groupedModels[model.group] = [];
+                    }
+                    groupedModels[model.group].push(model);
+                } else {
+                    ungroupedModels.push(model);
+                }
+            });
+
+            // Render grouped models with optgroup
+            Object.keys(groupedModels).forEach(groupName => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = groupName;
+
+                groupedModels[groupName].forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = model.name;
+                    if (model.id === selectedModelId) {
+                        option.selected = true;
+                    }
+                    optgroup.appendChild(option);
+                });
+
+                agentSelect.appendChild(optgroup);
+            });
+
+            // Render ungrouped models (like separators) at the end
+            ungroupedModels.forEach(model => {
                 const option = document.createElement('option');
                 option.value = model.id;
                 option.textContent = model.name;
