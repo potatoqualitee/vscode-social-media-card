@@ -327,11 +327,11 @@ export function getMainScript(): string {
                 return;
             }
 
-            // Check if we're currently generating (progress bars are showing)
-            const isCurrentlyGenerating = document.getElementById('progress-fill') !== null;
+            // Check if we're currently generating (use the flag, not DOM check)
+            // Only preserve progress bars if we're actively generating
             let progressHtml = '';
 
-            if (isCurrentlyGenerating) {
+            if (isGenerating) {
                 // Preserve the progress bar HTML
                 const loadingContainer = previewArea.querySelector('.loading-container');
                 if (loadingContainer) {
@@ -1033,6 +1033,12 @@ export function getMainScript(): string {
                         const overallPercentage = (completedCount / totalDesignsExpected) * 100;
                         overallFillEl.style.width = overallPercentage + '%';
                         countEl.textContent = \`\${completedCount}/\${totalDesignsExpected}\`;
+
+                        // Reset the current design progress bar for the next design
+                        // (unless we've just completed all designs)
+                        if (completedCount < totalDesignsExpected) {
+                            progressStartTime = Date.now();
+                        }
                     }
                     break;
                 case 'designs':
