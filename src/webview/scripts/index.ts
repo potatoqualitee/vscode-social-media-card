@@ -920,6 +920,13 @@ export function getMainScript(): string {
 
                     // Show progress bar/animation for design generation
                     if (loadingAnimationType === 'progress-bar') {
+                        // Initialize overall progress with total designs count if provided
+                        // Do this BEFORE calling showLoadingAnimation so it knows whether to show overall progress
+                        if (message.totalDesigns !== undefined) {
+                            totalDesignsExpected = message.totalDesigns;
+                            completedDesignsCount = 0;
+                        }
+
                         // Determine title based on action
                         let progressTitle;
                         if (message.status.includes('Modifying')) {
@@ -939,10 +946,8 @@ export function getMainScript(): string {
                             }
                         }
 
-                        // Initialize overall progress with total designs count if provided
+                        // Update the overall progress UI elements if they exist
                         if (message.totalDesigns !== undefined) {
-                            totalDesignsExpected = message.totalDesigns;
-                            completedDesignsCount = 0;
                             const countEl = document.getElementById('progress-count');
                             const overallFillEl = document.getElementById('progress-fill-overall');
                             if (countEl) {
