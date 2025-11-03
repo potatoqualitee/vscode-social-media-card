@@ -262,6 +262,8 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
         vscode.workspace.onDidChangeConfiguration((e) => {
             if (e.affectsConfiguration('socialCardGenerator.numberOfDesigns')) {
                 this.sendNumDesignsSetting();
+                // Also adjust currently displayed designs to match new setting
+                this.adjustDisplayedDesignsToSetting();
             }
         });
 
@@ -298,6 +300,33 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
         return cached !== undefined && cached.designs.length > 0;
     }
 
+    private adjustDisplayedDesignsToSetting() {
+        // Get current file and its cached designs
+        const currentFile = vscode.window.activeTextEditor?.document.uri.toString();
+        if (!currentFile) {
+            return;
+        }
+
+        const cached = this.designCache.get(currentFile);
+        if (!cached || cached.designs.length === 0) {
+            return;
+        }
+
+        // Get current numberOfDesigns setting
+        const config = vscode.workspace.getConfiguration('socialCardGenerator');
+        const numberOfDesigns = config.get<number>('numberOfDesigns', 5);
+
+        // Slice cached designs to match current setting
+        const adjustedDesigns = cached.designs.slice(0, numberOfDesigns);
+
+        // Send adjusted designs to webview
+        this._view?.webview.postMessage({
+            type: 'designs',
+            designs: adjustedDesigns,
+            dimensions: cached.dimensions
+        });
+    }
+
     private updateButtonState() {
         const hasValidEditor = !!vscode.window.activeTextEditor;
         const currentFile = vscode.window.activeTextEditor?.document.uri.toString();
@@ -322,10 +351,17 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
             // These messages will also update the button state, so don't send update-button-state separately
             const cached = currentFile ? this.designCache.get(currentFile) : undefined;
             if (cached) {
-                // Show cached designs for this file (will set button to "Regenerate")
+                // Get current numberOfDesigns setting and adjust cached designs to match
+                const config = vscode.workspace.getConfiguration('socialCardGenerator');
+                const numberOfDesigns = config.get<number>('numberOfDesigns', 5);
+
+                // Slice cached designs to match current setting
+                const adjustedDesigns = cached.designs.slice(0, numberOfDesigns);
+
+                // Show adjusted designs for this file (will set button to "Regenerate")
                 this._view?.webview.postMessage({
                     type: 'designs',
-                    designs: cached.designs,
+                    designs: adjustedDesigns,
                     dimensions: cached.dimensions
                 });
             } else {
