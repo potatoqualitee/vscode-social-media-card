@@ -840,19 +840,47 @@ export function getMainScript(): string {
             }
         });
 
-        document.getElementById('separate-requests').addEventListener('change', function() {
-            vscode.postMessage({
-                type: 'update-setting',
-                key: 'useSeparateRequestsForPremiumModels',
-                value: this.checked
+        // Token usage slider event listener with description updates
+        const tokenSlider = document.getElementById('token-usage-level');
+        const tokenDescription = document.getElementById('token-usage-description');
+        const sliderWrapper = document.querySelector('.slider-track-wrapper');
+        const sliderLabels = document.querySelectorAll('.slider-label');
+
+        const tokenDescriptions = [
+            '<strong>Level 0 (Conservative):</strong> Built-in best practices, batched requests, mini model for summary, use summarization step',
+            '<strong>Level 1 (Balanced):</strong> Dynamic best practices per post, batched requests, mini model for summary, use summarization step',
+            '<strong>Level 2 (Quality):</strong> Dynamic best practices, separate API calls per design, main model for summary, use summarization step',
+            '<strong>Level 3 (Maximum):</strong> Dynamic best practices, separate API calls, main model for summary, send full content (skip summarization)'
+        ];
+
+        function updateTokenUI(level) {
+            // Update description
+            tokenDescription.innerHTML = tokenDescriptions[level];
+
+            // Update wrapper data attribute for gradient fill
+            sliderWrapper.setAttribute('data-value', level);
+
+            // Update active label
+            sliderLabels.forEach((label, index) => {
+                if (parseInt(label.getAttribute('data-level')) === level) {
+                    label.classList.add('active');
+                } else {
+                    label.classList.remove('active');
+                }
             });
+        }
+
+        tokenSlider.addEventListener('input', function() {
+            updateTokenUI(parseInt(this.value));
         });
 
-        document.getElementById('skip-summary').addEventListener('change', function() {
+        tokenSlider.addEventListener('change', function() {
+            const value = parseInt(this.value);
+            updateTokenUI(value);
             vscode.postMessage({
                 type: 'update-setting',
-                key: 'skipSummaryStep',
-                value: this.checked
+                key: 'tokenUsageLevel',
+                value: value
             });
         });
 
@@ -862,15 +890,6 @@ export function getMainScript(): string {
             vscode.postMessage({
                 type: 'update-setting',
                 key: 'loadingAnimation',
-                value: value
-            });
-        });
-
-        document.getElementById('best-practices-mode').addEventListener('change', function() {
-            const value = this.value;
-            vscode.postMessage({
-                type: 'update-setting',
-                key: 'bestPracticesMode',
                 value: value
             });
         });
@@ -1165,9 +1184,9 @@ export function getMainScript(): string {
                     break;
                 case 'current-settings':
                     document.getElementById('num-designs').value = message.settings.numberOfDesigns;
-                    document.getElementById('separate-requests').checked = message.settings.useSeparateRequestsForPremiumModels;
-                    document.getElementById('skip-summary').checked = message.settings.skipSummaryStep || false;
-                    document.getElementById('best-practices-mode').value = message.settings.bestPracticesMode || 'default';
+                    const tokenLevel = message.settings.tokenUsageLevel !== undefined ? message.settings.tokenUsageLevel : 1;
+                    document.getElementById('token-usage-level').value = tokenLevel;
+                    updateTokenUI(tokenLevel);
                     document.getElementById('prompt-mode').value = message.settings.promptMode || 'default';
                     document.getElementById('custom-instructions').value = message.settings.customPromptInstructions || '';
                     document.getElementById('loading-animation').value = message.settings.loadingAnimation || 'progress-bar';

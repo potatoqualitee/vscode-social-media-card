@@ -10,16 +10,34 @@ export function getSettingsView(): string {
             </div>
 
             <div class="settings-section">
-                <h3>Prompt Customization</h3>
+                <h3>Token Usage & Quality</h3>
                 <div class="settings-option">
-                    <label for="best-practices-mode">Best Practices Mode</label>
-                    <div class="description">Choose how best practices are determined for design generation</div>
-                    <select id="best-practices-mode" class="best-practices-mode-select">
-                        <option value="dynamic">Dynamic - Generate fresh best practices (Recommended)</option>
-                        <option value="default">Default - Use built-in best practices (Faster)</option>
-                    </select>
-                    <div class="hint-text" style="margin-top: 8px;"><strong>Dynamic</strong> creates custom guidelines for your specific content, leading to more varied designs. <strong>Default</strong> is faster and uses fewer tokens.</div>
+                    <label for="token-usage-level">Token Usage Level</label>
+                    <div class="description">Balance between token/API costs and design quality. Slide right for better quality but higher costs.</div>
+                    <div class="slider-container">
+                        <div class="slider-labels">
+                            <span class="slider-label" data-level="0">Conservative</span>
+                            <span class="slider-label active" data-level="1">Balanced</span>
+                            <span class="slider-label" data-level="2">Quality</span>
+                            <span class="slider-label" data-level="3">Maximum</span>
+                        </div>
+                        <div class="slider-track-wrapper" data-value="1">
+                            <input type="range" id="token-usage-level" min="0" max="3" step="1" value="1" class="token-slider">
+                            <div class="slider-ticks">
+                                <span class="tick"></span>
+                                <span class="tick"></span>
+                                <span class="tick"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hint-text" id="token-usage-description" style="margin-top: 8px;">
+                        <strong>Level 1 (Balanced):</strong> Dynamic best practices per post, batched requests, mini model for summary
+                    </div>
                 </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Prompt Customization</h3>
                 <div class="settings-option">
                     <label for="prompt-mode">Prompt Mode</label>
                     <div class="description">Choose how to customize the AI design prompt</div>
@@ -40,23 +58,7 @@ export function getSettingsView(): string {
             </div>
 
             <div class="settings-section">
-                <h3>Advanced</h3>
-                <div class="settings-option">
-                    <label for="skip-summary">Skip Summary Step</label>
-                    <div class="description">Skip the summarization step and send the full blog post content directly to the design prompt. This combines both steps into one API call.</div>
-                    <div class="checkbox-wrapper">
-                        <input type="checkbox" id="skip-summary">
-                        <span style="font-size: 12px;">Send full content in one prompt (uses more tokens)</span>
-                    </div>
-                </div>
-                <div class="settings-option">
-                    <label for="separate-requests">Premium Model Quality</label>
-                    <div class="description">When using premium models (non-OpenAI), generate designs with separate API calls for better quality (slower but higher quality)</div>
-                    <div class="checkbox-wrapper">
-                        <input type="checkbox" id="separate-requests">
-                        <span style="font-size: 12px;">Use separate requests for premium models</span>
-                    </div>
-                </div>
+                <h3>Display</h3>
                 <div class="settings-option">
                     <label for="loading-animation">Loading Animation</label>
                     <div class="description">Choose what to display in the preview area while generating designs</div>

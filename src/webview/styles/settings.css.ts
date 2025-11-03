@@ -172,5 +172,153 @@ export function getStyles(): string {
         .settings-back-btn-bottom:hover {
             background-color: var(--vscode-button-secondaryHoverBackground);
         }
+
+        /* Token Usage Slider - Elegant & Minimal */
+        .slider-container {
+            margin-top: 24px;
+            padding: 0;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 0 2px;
+        }
+
+        .slider-label {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--vscode-descriptionForeground);
+            text-align: center;
+            transition: all 0.2s ease;
+            user-select: none;
+            opacity: 0.6;
+        }
+
+        .slider-label.active {
+            color: var(--vscode-foreground);
+            font-weight: 500;
+            opacity: 1;
+        }
+
+        /* Wrapper for slider track */
+        .slider-track-wrapper {
+            position: relative;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .token-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 2px;
+            background: var(--vscode-input-border);
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .token-slider:hover {
+            height: 3px;
+        }
+
+        .token-slider:focus {
+            outline: none;
+        }
+
+        /* Webkit Slider Thumb */
+        .token-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            background: var(--vscode-foreground);
+            cursor: pointer;
+            border: 2px solid var(--vscode-editor-background);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: all 0.15s ease;
+        }
+
+        .token-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+        }
+
+        .token-slider::-webkit-slider-thumb:active {
+            transform: scale(1.05);
+        }
+
+        /* Firefox Slider Thumb */
+        .token-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            background: var(--vscode-foreground);
+            cursor: pointer;
+            border: 2px solid var(--vscode-editor-background);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: all 0.15s ease;
+        }
+
+        .token-slider::-moz-range-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+        }
+
+        .token-slider::-moz-range-thumb:active {
+            transform: scale(1.05);
+        }
+
+        /* Firefox track */
+        .token-slider::-moz-range-track {
+            background: var(--vscode-input-border);
+            border: none;
+            height: 2px;
+        }
+
+        /* Subtle tick marks */
+        .slider-ticks {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            display: flex;
+            justify-content: space-between;
+            padding: 0 calc(50% / 3);
+            pointer-events: none;
+        }
+
+        .slider-ticks .tick {
+            width: 1px;
+            height: 8px;
+            background-color: var(--vscode-input-border);
+            opacity: 0.4;
+        }
+
+        /* Subtle progress indicator */
+        .slider-track-wrapper::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 2px;
+            background: var(--vscode-foreground);
+            opacity: 0.15;
+            transition: width 0.2s ease;
+            pointer-events: none;
+        }
+
+        /* Dynamic width based on slider value */
+        .slider-track-wrapper[data-value="0"]::before { width: 0%; }
+        .slider-track-wrapper[data-value="1"]::before { width: 33.33%; }
+        .slider-track-wrapper[data-value="2"]::before { width: 66.66%; }
+        .slider-track-wrapper[data-value="3"]::before { width: 100%; }
     `;
 }

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { CliProviderService } from './services/CliProviderService';
 import { OpenAiCompatibleService } from './services/OpenAiCompatibleService';
 import { ModelInfo } from './managers/ModelManager';
+import { getTokenUsageSettings } from './TokenUsageSettings';
 
 export interface CardDesign {
     title: string;
@@ -497,9 +498,9 @@ ${technicalRequirements}`;
         let summaryModel: vscode.LanguageModelChat | undefined = model;
         let summaryModelInfo: ModelInfo | undefined = modelInfo;
 
-        // Check if user wants to always use mini model for summarization
-        const config = vscode.workspace.getConfiguration('socialCardGenerator');
-        const alwaysUseMini = config.get<boolean>('alwaysUseMiniForSummary', false);
+        // Get token usage settings from slider
+        const tokenSettings = getTokenUsageSettings();
+        const alwaysUseMini = tokenSettings.alwaysUseMiniForSummary;
 
         // Determine which model to use for summarization
         const shouldUseMini = alwaysUseMini || !modelInfo || (!modelInfo.isCli && modelInfo.id !== 'openai-compatible');
@@ -725,14 +726,13 @@ Return ONLY valid JSON in this exact format:
 
         console.log(`Generating ${numberOfDesigns} designs separately for better quality`);
 
-        // Check if we should generate dynamic best practices
-        const config = vscode.workspace.getConfiguration('socialCardGenerator');
-        const bestPracticesMode = config.get<string>('bestPracticesMode', 'default');
+        // Get token usage settings from slider
+        const tokenSettings = getTokenUsageSettings();
         let dynamicBestPractices: string | undefined;
 
-        console.log(`Best Practices Mode: ${bestPracticesMode}`);
+        console.log(`Token Usage Level - Best Practices Mode: ${tokenSettings.bestPracticesMode}`);
 
-        if (bestPracticesMode === 'dynamic') {
+        if (tokenSettings.bestPracticesMode === 'dynamic') {
             console.log('Generating dynamic best practices...');
             if (debugCallback) {
                 debugCallback(`\n=== Generating Dynamic Best Practices ===\n`);
@@ -937,9 +937,9 @@ Return ONLY valid JSON in this exact format:
             model = models[0];
         }
 
-        // Get configuration once for all checks
-        const config = vscode.workspace.getConfiguration('socialCardGenerator');
-        const useSeparateForPremium = config.get<boolean>('useSeparateRequestsForPremiumModels', false);
+        // Get token usage settings from slider
+        const tokenSettings = getTokenUsageSettings();
+        const useSeparateForPremium = tokenSettings.useSeparateRequestsForPremiumModels;
 
         // Check if model is from OpenAI (always use separate requests) or if user opted in for premium
         // For CLI providers, always use separate requests
@@ -970,12 +970,11 @@ Return ONLY valid JSON in this exact format:
         // Fall back to batched request (original behavior)
 
         // Check if we should generate dynamic best practices
-        const bestPracticesMode = config.get<string>('bestPracticesMode', 'default');
         let dynamicBestPractices: string | undefined;
 
-        console.log(`Best Practices Mode (batch): ${bestPracticesMode}`);
+        console.log(`Token Usage Level (batch) - Best Practices Mode: ${tokenSettings.bestPracticesMode}`);
 
-        if (bestPracticesMode === 'dynamic') {
+        if (tokenSettings.bestPracticesMode === 'dynamic') {
             console.log('Generating dynamic best practices...');
             if (debugCallback) {
                 debugCallback(`\n=== Generating Dynamic Best Practices ===\n`);

@@ -3,6 +3,7 @@ import { CardGenerator, CardDesign } from './CardGenerator';
 import { ScreenshotService } from './ScreenshotService';
 import { getWebviewHtml } from './webview/WebviewHtmlTemplate';
 import { ModelManager, ModelInfo } from './managers/ModelManager';
+import { getTokenUsageSettings } from './TokenUsageSettings';
 
 export class CardGeneratorProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
@@ -56,23 +57,19 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
 
         const config = vscode.workspace.getConfiguration('socialCardGenerator');
         const numberOfDesigns = config.get<number>('numberOfDesigns', 5);
-        const useSeparateRequests = config.get<boolean>('useSeparateRequestsForPremiumModels', false);
-        const bestPracticesMode = config.get<string>('bestPracticesMode', 'default');
+        const tokenUsageLevel = config.get<number>('tokenUsageLevel', 1);
         const promptMode = config.get<string>('promptMode', 'default');
         const customPromptInstructions = config.get<string>('customPromptInstructions', '');
         const loadingAnimation = config.get<string>('loadingAnimation', 'progress-bar');
-        const skipSummaryStep = config.get<boolean>('skipSummaryStep', false);
 
         this._view.webview.postMessage({
             type: 'current-settings',
             settings: {
                 numberOfDesigns,
-                useSeparateRequestsForPremiumModels: useSeparateRequests,
-                bestPracticesMode,
+                tokenUsageLevel,
                 promptMode,
                 customPromptInstructions,
-                loadingAnimation,
-                skipSummaryStep
+                loadingAnimation
             }
         });
     }
@@ -423,9 +420,9 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
                 return;
             }
 
-            // Check if skipSummaryStep setting is enabled
-            const config = vscode.workspace.getConfiguration('socialCardGenerator');
-            const skipSummaryStep = config.get<boolean>('skipSummaryStep', false);
+            // Check token usage settings from slider
+            const tokenSettings = getTokenUsageSettings();
+            const skipSummaryStep = tokenSettings.skipSummaryStep;
 
             // Variables for title, summary, and full content
             let title: string;
@@ -482,6 +479,7 @@ export class CardGeneratorProvider implements vscode.WebviewViewProvider {
             }
 
             // Get the number of designs to generate
+            const config = vscode.workspace.getConfiguration('socialCardGenerator');
             const designCount = numDesigns || config.get<number>('numberOfDesigns', 5);
 
             // Send initial progress update with total designs count

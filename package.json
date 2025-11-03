@@ -49,7 +49,8 @@
         "socialCardGenerator.useSeparateRequestsForPremiumModels": {
           "type": "boolean",
           "default": false,
-          "description": "When using premium models (non-OpenAI), generate designs with separate API calls for better quality. Note: This will use more API credits. OpenAI models always use separate requests as they are free."
+          "deprecationMessage": "This setting is deprecated. Use 'tokenUsageLevel' slider instead.",
+          "markdownDescription": "⚠️ **DEPRECATED**: Use 'Token Usage Level' slider instead. When using premium models (non-OpenAI), generate designs with separate API calls for better quality. Note: This will use more API credits. OpenAI models always use separate requests as they are free."
         },
         "socialCardGenerator.promptMode": {
           "type": "string",
@@ -72,6 +73,23 @@
           "editPresentation": "multilineText",
           "markdownDescription": "Your custom prompt instructions. **Append mode**: Add extra direction to the default prompt. **Custom mode**: Write your own prompt using template variables: `{{title}}`, `{{summary}}`, `{{width}}`, `{{height}}`, `{{designNumber}}`, `{{numberOfDesigns}}`. Technical requirements (JSON format, HTML/CSS) will be automatically included."
         },
+        "socialCardGenerator.tokenUsageLevel": {
+          "type": "number",
+          "enum": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "default": 1,
+          "enumDescriptions": [
+            "Conservative - Minimum token usage (built-in best practices, batch requests, mini model for summary, use summarization)",
+            "Balanced - Good quality with reasonable token usage (dynamic best practices, batch requests, mini model for summary, use summarization)",
+            "Quality - Higher quality designs (dynamic best practices, separate requests for premium models, main model for summary, use summarization)",
+            "Maximum - Best quality, highest token usage (dynamic best practices, separate requests, main model for summary, full content to design prompt)"
+          ],
+          "markdownDescription": "Control the balance between token usage and design quality. Slide right for better quality but higher token/API costs:\n\n**Level 0 (Conservative)**: Minimal tokens - built-in best practices, batched requests, mini model\n\n**Level 1 (Balanced)**: Dynamic best practices per post, still uses batching and mini model\n\n**Level 2 (Quality)**: Separate API calls for each design, uses main model for everything\n\n**Level 3 (Maximum)**: All quality features + sends full blog post content (no summarization)"
+        },
         "socialCardGenerator.bestPracticesMode": {
           "type": "string",
           "enum": [
@@ -79,11 +97,12 @@
             "dynamic"
           ],
           "default": "dynamic",
+          "deprecationMessage": "This setting is deprecated. Use 'tokenUsageLevel' slider instead.",
           "enumDescriptions": [
             "Use built-in best practices (faster, uses fewer tokens, more consistent)",
             "Generate fresh best practices for each blog post (more varied, context-aware designs)"
           ],
-          "markdownDescription": "Choose how best practices are determined. **Default**: Uses comprehensive built-in guidelines - faster and uses fewer tokens. **Dynamic** (Recommended): Asks the AI to create custom best practices for your specific content, leading to more varied and context-aware designs (uses an additional API call, automatically falls back to default if model doesn't support it)."
+          "markdownDescription": "⚠️ **DEPRECATED**: Use 'Token Usage Level' slider instead. Choose how best practices are determined. **Default**: Uses comprehensive built-in guidelines - faster and uses fewer tokens. **Dynamic** (Recommended): Asks the AI to create custom best practices for your specific content, leading to more varied and context-aware designs (uses an additional API call, automatically falls back to default if model doesn't support it)."
         },
         "socialCardGenerator.loadingAnimation": {
           "type": "string",
@@ -123,12 +142,14 @@
         "socialCardGenerator.alwaysUseMiniForSummary": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Always use a Copilot GPT mini model for blog post summarization (Step 1), even when using CLI or OpenAI-Compatible API models. This can save costs but requires GitHub Copilot to be active."
+          "deprecationMessage": "This setting is deprecated. Use 'tokenUsageLevel' slider instead.",
+          "markdownDescription": "⚠️ **DEPRECATED**: Use 'Token Usage Level' slider instead. Always use a Copilot GPT mini model for blog post summarization (Step 1), even when using CLI or OpenAI-Compatible API models. This can save costs but requires GitHub Copilot to be active."
         },
         "socialCardGenerator.skipSummaryStep": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Skip the summarization step and send the full blog post content directly to the design generation prompt. This combines both steps into one API call, which may work better with some models but will use more tokens."
+          "deprecationMessage": "This setting is deprecated. Use 'tokenUsageLevel' slider instead.",
+          "markdownDescription": "⚠️ **DEPRECATED**: Use 'Token Usage Level' slider instead. Skip the summarization step and send the full blog post content directly to the design generation prompt. This combines both steps into one API call, which may work better with some models but will use more tokens."
         },
         "socialCardGenerator.openaiCompatible.baseUrl": {
           "type": "string",
