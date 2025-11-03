@@ -995,6 +995,20 @@ export function getMainScript(): string {
 
                             // Reset current design progress bar when starting a new design
                             progressStartTime = Date.now();
+
+                            // Hide overtime message and reset progress for new design
+                            const overtimeEl = document.getElementById('overtime-message');
+                            if (overtimeEl) {
+                                overtimeEl.style.display = 'none';
+                            }
+                            const fillEl = document.getElementById('progress-fill');
+                            if (fillEl) {
+                                fillEl.style.width = '0%';
+                            }
+                            const timeEl = document.getElementById('progress-time');
+                            if (timeEl) {
+                                timeEl.textContent = 'This usually takes a minute or two..';
+                            }
                         }
                     } else {
                         progressBar.classList.remove('hidden');
@@ -1038,6 +1052,20 @@ export function getMainScript(): string {
                         // (unless we've just completed all designs)
                         if (completedCount < totalDesignsExpected) {
                             progressStartTime = Date.now();
+
+                            // Hide overtime message and reset progress for new design
+                            const overtimeEl = document.getElementById('overtime-message');
+                            if (overtimeEl) {
+                                overtimeEl.style.display = 'none';
+                            }
+                            const fillEl = document.getElementById('progress-fill');
+                            if (fillEl) {
+                                fillEl.style.width = '0%';
+                            }
+                            const timeEl = document.getElementById('progress-time');
+                            if (timeEl) {
+                                timeEl.textContent = 'This usually takes a minute or two..';
+                            }
                         }
                     }
                     break;

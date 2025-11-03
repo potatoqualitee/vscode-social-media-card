@@ -38,8 +38,7 @@ export function getStyles(): string {
         }
 
         .error-message::before {
-            background-color: var(--vscode-errorForeground);
-            animation: none;
+            display: none;
         }
 
         #preview-area {
