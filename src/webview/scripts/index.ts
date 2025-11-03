@@ -130,6 +130,9 @@ export function getMainScript(): string {
             const previewArea = document.getElementById('preview-area');
 
             if (loadingAnimationType === 'progress-bar') {
+                // Preserve existing progress count if available
+                const initialCount = totalDesignsExpected > 0 ? \`0/\${totalDesignsExpected}\` : '0/0';
+
                 previewArea.innerHTML = \`
                     <div class="loading-container">
                         <div class="progress-bar-container">
@@ -140,7 +143,7 @@ export function getMainScript(): string {
                                 <div class="progress-bar-wrapper">
                                     <div class="progress-bar-fill" id="progress-fill-overall"></div>
                                 </div>
-                                <div class="progress-bar-count" id="progress-count">0/0</div>
+                                <div class="progress-bar-count" id="progress-count">\${initialCount}</div>
                             </div>
 
                             <div class="progress-bar-section" style="margin-top: 20px;">
