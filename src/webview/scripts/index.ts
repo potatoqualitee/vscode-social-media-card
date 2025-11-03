@@ -45,9 +45,30 @@ export function getMainScript(): string {
 
         function showStatus(message, type) {
             const statusArea = document.getElementById('status-area');
+
+            // Parse error message if it's JSON
+            let displayMessage = message;
+            if (type === 'error' && typeof message === 'string') {
+                try {
+                    const parsed = JSON.parse(message);
+                    if (parsed.error && typeof parsed.error === 'object') {
+                        displayMessage = parsed.error.message || message;
+
+                        // If this is a model_not_supported error, add the helpful note
+                        if (parsed.error.code === 'model_not_supported' && !displayMessage.includes('try waiting an hour')) {
+                            displayMessage += '\\n\\nNote: This error sometimes occurs during temporary GitHub Copilot service issues. If you encounter this error, try waiting an hour and trying again.';
+                        }
+                    } else if (parsed.message) {
+                        displayMessage = parsed.message;
+                    }
+                } catch (e) {
+                    // Not JSON, use as-is
+                }
+            }
+
             statusArea.innerHTML = \`
                 <div class="status-message \${type === 'error' ? 'error-message' : ''}">
-                    \${escapeHtml(message)}
+                    \${escapeHtml(displayMessage)}
                 </div>
             \`;
         }
